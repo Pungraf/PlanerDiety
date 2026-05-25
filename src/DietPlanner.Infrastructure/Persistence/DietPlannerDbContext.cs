@@ -1,5 +1,6 @@
 using DietPlanner.Application.Abstractions;
 using DietPlanner.Domain.Entities;
+using DietPlanner.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace DietPlanner.Infrastructure.Persistence;
@@ -45,6 +46,23 @@ public class DietPlannerDbContext : DbContext, IApplicationDbContext
     {
         ArgumentNullException.ThrowIfNull(user);
         return Users.AddAsync(user, cancellationToken).AsTask();
+    }
+
+    public async Task<WeeklyPlan?> FindCurrentWeeklyPlanAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("Value cannot be empty.", nameof(userId));
+        }
+
+        var plans = await WeeklyPlans
+            .Where(plan => plan.UserId == userId)
+            .OrderByDescending(plan => plan.StartDate)
+            .ToListAsync(cancellationToken);
+
+        return plans
+            .OrderByDescending(plan => plan.Status == WeeklyPlanStatus.Active)
+            .FirstOrDefault();
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
