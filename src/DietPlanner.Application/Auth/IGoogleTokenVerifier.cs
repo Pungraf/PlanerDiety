@@ -5,4 +5,4 @@ public interface IGoogleTokenVerifier
     Task<GoogleUserInfo> VerifyAsync(string idToken, CancellationToken cancellationToken);
 }
 
-public sealed record GoogleUserInfo(string Subject, string Email, string Name);
+public sealed record GoogleUserInfo(string Subject, string Email, string Name, bool EmailVerified);

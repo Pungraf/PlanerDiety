@@ -12,13 +12,15 @@ public sealed class JwtSessionTokenService : ISessionTokenService
 {
     private const string DefaultIssuer = "DietPlanner";
     private const string DefaultAudience = "DietPlanner.Client";
-    private const string DefaultSigningKey = "DietPlanner-Development-Key-Change-Me-12345";
 
     private readonly IConfiguration _configuration;
+    private readonly string _signingKey;
 
     public JwtSessionTokenService(IConfiguration configuration)
     {
         _configuration = configuration;
+        _signingKey = _configuration["Jwt:Key"]
+            ?? throw new InvalidOperationException("JWT signing key configuration is missing: Jwt:Key");
     }
 
     public string CreateToken(User user)
@@ -27,9 +29,8 @@ public sealed class JwtSessionTokenService : ISessionTokenService
 
         var issuer = _configuration["Jwt:Issuer"] ?? DefaultIssuer;
         var audience = _configuration["Jwt:Audience"] ?? DefaultAudience;
-        var signingKey = _configuration["Jwt:Key"] ?? DefaultSigningKey;
         var credentials = new SigningCredentials(
-            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_signingKey)),
             SecurityAlgorithms.HmacSha256);
 
         var claims = new List<Claim>

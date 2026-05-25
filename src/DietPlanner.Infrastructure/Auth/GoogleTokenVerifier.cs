@@ -24,6 +24,6 @@ public sealed class GoogleTokenVerifier : IGoogleTokenVerifier
         }
 
         var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, validationSettings);
-        return new GoogleUserInfo(payload.Subject, payload.Email, payload.Name ?? payload.Email);
+        return new GoogleUserInfo(payload.Subject, payload.Email, payload.Name ?? payload.Email, payload.EmailVerified);
     }
 }

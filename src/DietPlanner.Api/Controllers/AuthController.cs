@@ -19,8 +19,15 @@ public sealed class AuthController : ControllerBase
         [FromBody] GoogleLoginRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _googleLoginHandler.HandleAsync(new GoogleLoginCommand(request.IdToken), cancellationToken);
-        return Ok(new LoginResponse(result.AccessToken));
+        try
+        {
+            var result = await _googleLoginHandler.HandleAsync(new GoogleLoginCommand(request.IdToken), cancellationToken);
+            return Ok(new LoginResponse(result.AccessToken));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized();
+        }
     }
 }
 

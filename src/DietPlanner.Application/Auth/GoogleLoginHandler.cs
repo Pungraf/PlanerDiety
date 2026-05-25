@@ -24,8 +24,17 @@ public sealed class GoogleLoginHandler
         ArgumentNullException.ThrowIfNull(command);
 
         var googleUser = await _googleTokenVerifier.VerifyAsync(command.IdToken, cancellationToken);
-        var user = await _dbContext.FindUserByGoogleSubjectAsync(googleUser.Subject, cancellationToken)
-            ?? await _dbContext.FindUserByEmailAsync(googleUser.Email, cancellationToken);
+        var user = await _dbContext.FindUserByGoogleSubjectAsync(googleUser.Subject, cancellationToken);
+
+        if (user is null && googleUser.EmailVerified)
+        {
+            user = await _dbContext.FindUserByEmailAsync(googleUser.Email, cancellationToken);
+        }
+
+        if (user is null && !googleUser.EmailVerified)
+        {
+            throw new UnauthorizedAccessException("Google email must be verified before linking by email.");
+        }
 
         if (user is null)
         {
