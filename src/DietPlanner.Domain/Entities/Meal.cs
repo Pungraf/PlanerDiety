@@ -12,12 +12,21 @@ public class Meal
 
     public MealType Type { get; private set; }
 
+    public bool IsDessert { get; private set; }
+
+    public int Kcal { get; private set; }
+
+    public int Protein { get; private set; }
+
     public IReadOnlyCollection<MealIngredient> Ingredients => _ingredients;
 
-    public Meal(Guid id, string name, MealType type)
+    public Meal(Guid id, string name, MealType type, bool isDessert, int kcal, int protein)
     {
         Id = id;
         Name = name;
         Type = type;
+        IsDessert = isDessert;
+        Kcal = kcal;
+        Protein = protein;
     }
 }

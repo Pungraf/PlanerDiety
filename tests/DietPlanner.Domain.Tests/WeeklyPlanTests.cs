@@ -15,4 +15,15 @@ public class WeeklyPlanTests
 
         plan.Status.Should().Be(WeeklyPlanStatus.Active);
     }
+
+    [Fact]
+    public void ActivateActivePlan_ShouldThrowInvalidOperationException()
+    {
+        var plan = WeeklyPlan.CreateDraft(Guid.NewGuid(), new DateOnly(2026, 5, 25), DinnerMode.BreakfastStyle);
+        plan.Activate();
+
+        var act = () => plan.Activate();
+
+        act.Should().Throw<InvalidOperationException>();
+    }
 }

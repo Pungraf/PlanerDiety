@@ -34,6 +34,11 @@ public class WeeklyPlan
 
     public void Activate()
     {
+        if (Status != WeeklyPlanStatus.Draft)
+        {
+            throw new InvalidOperationException("Only draft plans can be activated.");
+        }
+
         Status = WeeklyPlanStatus.Active;
     }
 }

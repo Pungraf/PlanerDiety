@@ -8,10 +8,16 @@ public class MealIngredient
 
     public decimal Quantity { get; private set; }
 
-    public MealIngredient(Guid mealId, Guid ingredientId, decimal quantity)
+    public string Unit { get; private set; }
+
+    public string ShoppingCategory { get; private set; }
+
+    public MealIngredient(Guid mealId, Guid ingredientId, decimal quantity, string unit, string shoppingCategory)
     {
         MealId = mealId;
         IngredientId = ingredientId;
         Quantity = quantity;
+        Unit = unit;
+        ShoppingCategory = shoppingCategory;
     }
 }
