@@ -4,4 +4,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DietPlanner.Domain\DietPlanner.Domain.csproj" />
+  </ItemGroup>
 </Project>

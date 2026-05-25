@@ -46,4 +46,10 @@ public class WeeklyPlan
 
         Status = WeeklyPlanStatus.Active;
     }
+
+    public void AddDay(DailyPlan day)
+    {
+        ArgumentNullException.ThrowIfNull(day);
+        _days.Add(day);
+    }
 }

@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\DietPlanner.Application\DietPlanner.Application.csproj" />
     <ProjectReference Include="..\..\src\DietPlanner.Domain\DietPlanner.Domain.csproj" />
   </ItemGroup>
 </Project>
