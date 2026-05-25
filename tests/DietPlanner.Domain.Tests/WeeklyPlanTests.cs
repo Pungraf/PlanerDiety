@@ -1,6 +1,7 @@
 using DietPlanner.Domain.Entities;
 using DietPlanner.Domain.Enums;
 using FluentAssertions;
+using System.Reflection;
 
 namespace DietPlanner.Domain.Tests;
 
@@ -41,5 +42,16 @@ public class WeeklyPlanTests
         var act = () => WeeklyPlan.CreateDraft(Guid.NewGuid(), new DateOnly(2026, 5, 25), (DinnerMode)99);
 
         act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void AddDay_ShouldNotBePublic()
+    {
+        var method = typeof(WeeklyPlan).GetMethod(
+            "AddDay",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+        method.Should().NotBeNull();
+        method!.IsPublic.Should().BeFalse();
     }
 }

@@ -16,7 +16,7 @@ public class DailyPlan
         Date = date;
     }
 
-    public void AddSlot(DailyMealSlot slot)
+    internal void AddSlot(DailyMealSlot slot)
     {
         ArgumentNullException.ThrowIfNull(slot);
         _mealSlots.Add(slot);
