@@ -14,7 +14,6 @@ public class WeeklyPlanRepository : IWeeklyPlanRepository
 
     public Task AddAsync(WeeklyPlan weeklyPlan, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(weeklyPlan);
-        return _dbContext.WeeklyPlans.AddAsync(weeklyPlan, cancellationToken).AsTask();
+        return _dbContext.AddWeeklyPlanAsync(weeklyPlan, cancellationToken);
     }
 }

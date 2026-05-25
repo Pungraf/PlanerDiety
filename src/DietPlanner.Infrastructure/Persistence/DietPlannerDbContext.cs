@@ -21,6 +21,12 @@ public class DietPlannerDbContext : DbContext, IApplicationDbContext
 
     public DbSet<ShoppingListItem> ShoppingListItems => Set<ShoppingListItem>();
 
+    public Task AddWeeklyPlanAsync(WeeklyPlan weeklyPlan, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(weeklyPlan);
+        return WeeklyPlans.AddAsync(weeklyPlan, cancellationToken).AsTask();
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(DietPlannerDbContext).Assembly);
