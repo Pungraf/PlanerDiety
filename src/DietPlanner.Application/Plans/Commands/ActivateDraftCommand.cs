@@ -1,6 +1,5 @@
 using DietPlanner.Application.Abstractions;
 using DietPlanner.Application.Plans.Queries;
-using DietPlanner.Domain.Enums;
 
 namespace DietPlanner.Application.Plans.Commands;
 
@@ -19,15 +18,10 @@ public sealed class ActivateDraftHandler
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var plan = await _dbContext.FindCurrentWeeklyPlanAsync(command.UserId, cancellationToken);
+        var plan = await _dbContext.FindLatestDraftWeeklyPlanAsync(command.UserId, cancellationToken);
         if (plan is null)
         {
             return null;
-        }
-
-        if (plan.Status != WeeklyPlanStatus.Draft)
-        {
-            throw new InvalidOperationException("Only draft plans can be activated.");
         }
 
         plan.Activate();

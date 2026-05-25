@@ -19,7 +19,7 @@ public sealed class GetCurrentPlanHandler
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        var plan = await _dbContext.FindCurrentWeeklyPlanAsync(query.UserId, cancellationToken);
+        var plan = await _dbContext.FindReadableWeeklyPlanAsync(query.UserId, cancellationToken);
         return plan is null ? null : CurrentPlanDto.From(plan);
     }
 }

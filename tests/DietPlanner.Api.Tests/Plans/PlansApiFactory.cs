@@ -30,7 +30,18 @@ internal sealed class PlansApiFactory : WebApplicationFactory<Program>, IAsyncDi
     {
         var factory = new PlansApiFactory();
         await factory._connection.OpenAsync();
-        await factory.SeedDraftPlanAsync();
+        factory.User = new User(Guid.NewGuid(), "Ada Lovelace", "ada@example.com", "google-sub-123");
+        await factory.SeedPlansAsync([CreateDraftPlan(factory.User.Id, new DateOnly(2026, 5, 25))]);
+        return factory;
+    }
+
+    public static async Task<PlansApiFactory> WithPlansAsync(Func<Guid, IEnumerable<WeeklyPlan>> planFactory)
+    {
+        var factory = new PlansApiFactory();
+        await factory._connection.OpenAsync();
+        factory.User = new User(Guid.NewGuid(), "Ada Lovelace", "ada@example.com", "google-sub-123");
+        var plans = planFactory(factory.User.Id);
+        await factory.SeedPlansAsync(plans);
         return factory;
     }
 
@@ -51,6 +62,16 @@ internal sealed class PlansApiFactory : WebApplicationFactory<Program>, IAsyncDi
         await using var scope = Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<DietPlannerDbContext>();
         return await dbContext.WeeklyPlans.SingleOrDefaultAsync(plan => plan.UserId == User.Id);
+    }
+
+    public async Task<IReadOnlyList<WeeklyPlan>> ReadPlansAsync()
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<DietPlannerDbContext>();
+        return await dbContext.WeeklyPlans
+            .Where(plan => plan.UserId == User.Id)
+            .OrderBy(plan => plan.StartDate)
+            .ToListAsync();
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -80,21 +101,18 @@ internal sealed class PlansApiFactory : WebApplicationFactory<Program>, IAsyncDi
         await _connection.DisposeAsync();
     }
 
-    private async Task SeedDraftPlanAsync()
+    private async Task SeedPlansAsync(IEnumerable<WeeklyPlan> plans)
     {
-        User = new User(Guid.NewGuid(), "Ada Lovelace", "ada@example.com", "google-sub-123");
-        var plan = CreateDraftPlan(User.Id);
-
         await using var scope = Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<DietPlannerDbContext>();
         await dbContext.Users.AddAsync(User);
-        await dbContext.WeeklyPlans.AddAsync(plan);
+        await dbContext.WeeklyPlans.AddRangeAsync(plans);
         await dbContext.SaveChangesAsync();
     }
 
-    private static WeeklyPlan CreateDraftPlan(Guid userId)
+    public static WeeklyPlan CreateDraftPlan(Guid userId, DateOnly startDate)
     {
-        var plan = WeeklyPlan.CreateDraft(userId, new DateOnly(2026, 5, 25), DinnerMode.BreakfastStyle);
+        var plan = WeeklyPlan.CreateDraft(userId, startDate, DinnerMode.BreakfastStyle);
         var addDay = typeof(WeeklyPlan).GetMethod("AddDay", BindingFlags.Instance | BindingFlags.NonPublic)!;
         var addSlot = typeof(DailyPlan).GetMethod("AddSlot", BindingFlags.Instance | BindingFlags.NonPublic)!;
 
@@ -106,6 +124,13 @@ internal sealed class PlansApiFactory : WebApplicationFactory<Program>, IAsyncDi
             addDay.Invoke(plan, [day]);
         }
 
+        return plan;
+    }
+
+    public static WeeklyPlan CreateActivePlan(Guid userId, DateOnly startDate)
+    {
+        var plan = CreateDraftPlan(userId, startDate);
+        plan.Activate();
         return plan;
     }
 }

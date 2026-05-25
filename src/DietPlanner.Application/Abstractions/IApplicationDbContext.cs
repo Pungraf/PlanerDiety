@@ -12,7 +12,9 @@ public interface IApplicationDbContext
 
     Task AddWeeklyPlanAsync(WeeklyPlan weeklyPlan, CancellationToken cancellationToken);
 
-    Task<WeeklyPlan?> FindCurrentWeeklyPlanAsync(Guid userId, CancellationToken cancellationToken);
+    Task<WeeklyPlan?> FindReadableWeeklyPlanAsync(Guid userId, CancellationToken cancellationToken);
+
+    Task<WeeklyPlan?> FindLatestDraftWeeklyPlanAsync(Guid userId, CancellationToken cancellationToken);
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

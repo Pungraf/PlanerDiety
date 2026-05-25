@@ -48,7 +48,7 @@ public class DietPlannerDbContext : DbContext, IApplicationDbContext
         return Users.AddAsync(user, cancellationToken).AsTask();
     }
 
-    public async Task<WeeklyPlan?> FindCurrentWeeklyPlanAsync(Guid userId, CancellationToken cancellationToken)
+    public async Task<WeeklyPlan?> FindReadableWeeklyPlanAsync(Guid userId, CancellationToken cancellationToken)
     {
         if (userId == Guid.Empty)
         {
@@ -63,6 +63,19 @@ public class DietPlannerDbContext : DbContext, IApplicationDbContext
         return plans
             .OrderByDescending(plan => plan.Status == WeeklyPlanStatus.Active)
             .FirstOrDefault();
+    }
+
+    public Task<WeeklyPlan?> FindLatestDraftWeeklyPlanAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("Value cannot be empty.", nameof(userId));
+        }
+
+        return WeeklyPlans
+            .Where(plan => plan.UserId == userId && plan.Status == WeeklyPlanStatus.Draft)
+            .OrderByDescending(plan => plan.StartDate)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
