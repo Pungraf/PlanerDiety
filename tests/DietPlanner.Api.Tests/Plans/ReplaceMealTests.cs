@@ -65,4 +65,31 @@ public class ReplaceMealTests
             .MealSlots.Single(slot => slot.SlotType == MealSlotType.Breakfast)
             .MealId.Should().Be(TestData.LunchMealId);
     }
+
+    [Fact]
+    public async Task ReplaceMeal_ShouldReturnBadRequest_WhenMealIdIsMissing()
+    {
+        await using var app = await PlansApiFactory.WithDraftPlanAsync();
+        using var client = await app.CreateAuthenticatedClientAsync();
+
+        var response = await client.PutAsJsonAsync("/api/plans/current/days/2026-05-26/slots/breakfast", new
+        {
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task ReplaceMeal_ShouldReturnBadRequest_WhenMealIdIsEmpty()
+    {
+        await using var app = await PlansApiFactory.WithDraftPlanAsync();
+        using var client = await app.CreateAuthenticatedClientAsync();
+
+        var response = await client.PutAsJsonAsync("/api/plans/current/days/2026-05-26/slots/breakfast", new
+        {
+            MealId = Guid.Empty
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

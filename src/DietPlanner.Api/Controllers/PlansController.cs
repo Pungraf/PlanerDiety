@@ -77,6 +77,11 @@ public sealed class PlansController : ControllerBase
             return BadRequest();
         }
 
+        if (request is null || request.MealId == Guid.Empty)
+        {
+            return BadRequest();
+        }
+
         var result = await _replaceMealHandler.HandleAsync(
             new ReplaceMealCommand(userId.Value, parsedDate, parsedSlotType, request.MealId),
             cancellationToken);
