@@ -1,4 +1,5 @@
 using DietPlanner.Application.Auth;
+using Google.Apis.Auth;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DietPlanner.Api.Controllers;
@@ -25,6 +26,10 @@ public sealed class AuthController : ControllerBase
             return Ok(new LoginResponse(result.AccessToken));
         }
         catch (UnauthorizedAccessException)
+        {
+            return Unauthorized();
+        }
+        catch (InvalidJwtException)
         {
             return Unauthorized();
         }

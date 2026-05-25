@@ -6,24 +6,39 @@ namespace DietPlanner.Infrastructure.Auth;
 
 public sealed class GoogleTokenVerifier : IGoogleTokenVerifier
 {
-    private readonly string? _clientId;
+    private readonly string _clientId;
 
     public GoogleTokenVerifier(IConfiguration configuration)
     {
-        _clientId = configuration["GoogleAuth:ClientId"];
+        _clientId = configuration["GoogleAuth:ClientId"]
+            ?? throw new InvalidOperationException("Google client ID configuration is missing: GoogleAuth:ClientId");
+
+        if (string.IsNullOrWhiteSpace(_clientId))
+        {
+            throw new InvalidOperationException("Google client ID configuration is missing: GoogleAuth:ClientId");
+        }
     }
 
     public async Task<GoogleUserInfo> VerifyAsync(string idToken, CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(idToken);
-
-        var validationSettings = new GoogleJsonWebSignature.ValidationSettings();
-        if (!string.IsNullOrWhiteSpace(_clientId))
+        if (string.IsNullOrWhiteSpace(idToken))
         {
-            validationSettings.Audience = [_clientId];
+            throw new UnauthorizedAccessException("Google ID token is required.");
         }
 
-        var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, validationSettings);
-        return new GoogleUserInfo(payload.Subject, payload.Email, payload.Name ?? payload.Email, payload.EmailVerified);
+        var validationSettings = new GoogleJsonWebSignature.ValidationSettings
+        {
+            Audience = [_clientId]
+        };
+
+        try
+        {
+            var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, validationSettings);
+            return new GoogleUserInfo(payload.Subject, payload.Email, payload.Name ?? payload.Email, payload.EmailVerified);
+        }
+        catch (InvalidJwtException exception)
+        {
+            throw new UnauthorizedAccessException("Google ID token is invalid.", exception);
+        }
     }
 }

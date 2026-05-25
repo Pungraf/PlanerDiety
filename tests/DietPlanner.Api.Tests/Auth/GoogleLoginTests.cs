@@ -4,6 +4,7 @@ using DietPlanner.Application.Abstractions;
 using DietPlanner.Application.Auth;
 using DietPlanner.Infrastructure.Persistence;
 using FluentAssertions;
+using Google.Apis.Auth;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Data.Sqlite;
@@ -74,6 +75,17 @@ public class GoogleLoginTests
     }
 
     [Fact]
+    public async Task GoogleLogin_ShouldReturnUnauthorized_WhenGoogleTokenIsInvalid()
+    {
+        await using var app = await ApiFactory.CreateAsync(new ThrowingGoogleTokenVerifier(new InvalidJwtException("invalid token")));
+        using var client = app.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/auth/google", new GoogleLoginRequest("invalid-google-token"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public void JwtSessionTokenService_ShouldThrow_WhenJwtKeyIsMissing()
     {
         var configuration = new ConfigurationBuilder().Build();
@@ -92,16 +104,23 @@ public class GoogleLoginTests
     {
         private readonly SqliteConnection _connection = new("Data Source=:memory:");
 
-        private readonly GoogleUserInfo _googleUserInfo;
+        private readonly IGoogleTokenVerifier _googleTokenVerifier;
 
-        private ApiFactory(GoogleUserInfo googleUserInfo)
+        private ApiFactory(IGoogleTokenVerifier googleTokenVerifier)
         {
-            _googleUserInfo = googleUserInfo;
+            _googleTokenVerifier = googleTokenVerifier;
         }
 
         public static async Task<ApiFactory> CreateAsync(GoogleUserInfo? googleUserInfo = null)
         {
-            var factory = new ApiFactory(googleUserInfo ?? new GoogleUserInfo("google-sub-123", "ada@example.com", "Ada Lovelace", true));
+            var factory = new ApiFactory(new FakeGoogleTokenVerifier(googleUserInfo ?? new GoogleUserInfo("google-sub-123", "ada@example.com", "Ada Lovelace", true)));
+            await factory._connection.OpenAsync();
+            return factory;
+        }
+
+        public static async Task<ApiFactory> CreateAsync(IGoogleTokenVerifier googleTokenVerifier)
+        {
+            var factory = new ApiFactory(googleTokenVerifier);
             await factory._connection.OpenAsync();
             return factory;
         }
@@ -125,7 +144,7 @@ public class GoogleLoginTests
 
                 services.AddDbContext<DietPlannerDbContext>(options => options.UseSqlite(_connection));
                 services.AddScoped<IApplicationDbContext>(serviceProvider => serviceProvider.GetRequiredService<DietPlannerDbContext>());
-                services.AddSingleton<IGoogleTokenVerifier>(new FakeGoogleTokenVerifier(_googleUserInfo));
+                services.AddSingleton(_googleTokenVerifier);
             });
         }
 
@@ -157,6 +176,21 @@ public class GoogleLoginTests
         {
             idToken.Should().Be("valid-google-token");
             return Task.FromResult(_googleUserInfo);
+        }
+    }
+
+    private sealed class ThrowingGoogleTokenVerifier : IGoogleTokenVerifier
+    {
+        private readonly Exception _exception;
+
+        public ThrowingGoogleTokenVerifier(Exception exception)
+        {
+            _exception = exception;
+        }
+
+        public Task<GoogleUserInfo> VerifyAsync(string idToken, CancellationToken cancellationToken)
+        {
+            throw _exception;
         }
     }
 }
