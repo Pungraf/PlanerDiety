@@ -81,6 +81,8 @@ public class DietPlannerDbContext : DbContext, IApplicationDbContext
         }
 
         return WeeklyPlans
+            .Include(plan => plan.Days)
+            .ThenInclude(day => day.MealSlots)
             .Where(plan => plan.UserId == userId && plan.Status == WeeklyPlanStatus.Draft)
             .OrderByDescending(plan => plan.StartDate)
             .FirstOrDefaultAsync(cancellationToken);

@@ -17,7 +17,7 @@ public sealed class ReplaceMealHandler
 
     public async Task<ReplaceMealResult?> HandleAsync(ReplaceMealCommand command, CancellationToken cancellationToken)
     {
-        var plan = await _dbContext.FindReadableWeeklyPlanAsync(command.UserId, cancellationToken);
+        var plan = await _dbContext.FindLatestDraftWeeklyPlanAsync(command.UserId, cancellationToken);
         if (plan is null)
         {
             return null;

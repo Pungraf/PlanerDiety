@@ -72,7 +72,7 @@ public class WeeklyPlanPersistenceTests
             await connection.OpenAsync();
 
             await using var db = CreateDbContext(connection);
-            await db.Database.EnsureCreatedAsync();
+            await SqliteSchemaBootstrapper.InitializeAsync(db);
 
             return new SqliteFixture(connection);
         }
