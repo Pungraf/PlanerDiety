@@ -30,14 +30,19 @@ public class ReplaceMealTests
     }
 
     [Fact]
-    public async Task ReplaceMeal_ShouldMutateLatestDraft_WhenActivePlanForSameWeekExists()
+    public async Task ReplaceMeal_ShouldMutateTheSamePlanReturnedByGetCurrent()
     {
         await using var app = await PlansApiFactory.WithPlansAsync(userId =>
         [
             PlansApiFactory.CreateActivePlan(userId, new DateOnly(2026, 5, 25)),
-            PlansApiFactory.CreateDraftPlan(userId, new DateOnly(2026, 5, 25))
+            PlansApiFactory.CreateDraftPlan(userId, new DateOnly(2026, 6, 1))
         ]);
         using var client = await app.CreateAuthenticatedClientAsync();
+
+        var currentResponse = await client.GetAsync("/api/plans/current");
+        currentResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var currentPlan = await currentResponse.Content.ReadFromJsonAsync<CurrentPlanResponse>();
+        currentPlan.Should().NotBeNull();
 
         var response = await client.PutAsJsonAsync("/api/plans/current/days/2026-05-26/slots/breakfast", new
         {
@@ -54,16 +59,16 @@ public class ReplaceMealTests
             .Where(plan => plan.UserId == app.User.Id)
             .ToListAsync();
 
-        var activePlan = plans.Single(plan => plan.Status == WeeklyPlanStatus.Active);
-        var draftPlan = plans.Single(plan => plan.Status == WeeklyPlanStatus.Draft);
+        var mutatedPlan = plans.Single(plan => plan.Id == currentPlan!.Id);
+        var untouchedDraft = plans.Single(plan => plan.Status == WeeklyPlanStatus.Draft);
 
-        activePlan.Days.Single(day => day.Date == new DateOnly(2026, 5, 26))
-            .MealSlots.Single(slot => slot.SlotType == MealSlotType.Breakfast)
-            .MealId.Should().BeNull();
-
-        draftPlan.Days.Single(day => day.Date == new DateOnly(2026, 5, 26))
+        mutatedPlan.Days.Single(day => day.Date == new DateOnly(2026, 5, 26))
             .MealSlots.Single(slot => slot.SlotType == MealSlotType.Breakfast)
             .MealId.Should().Be(TestData.LunchMealId);
+
+        untouchedDraft.Days.Single(day => day.Date == new DateOnly(2026, 6, 2))
+            .MealSlots.Single(slot => slot.SlotType == MealSlotType.Breakfast)
+            .MealId.Should().BeNull();
     }
 
     [Fact]
@@ -92,4 +97,6 @@ public class ReplaceMealTests
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    private sealed record CurrentPlanResponse(Guid Id, string Status, string StartDate, string DinnerMode);
 }

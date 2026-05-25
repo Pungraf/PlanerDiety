@@ -21,11 +21,16 @@ public sealed class SearchMealsHandler
     }
 }
 
-public sealed record MealSearchDto(Guid Id, string Name, string Type)
+public sealed record MealSearchDto(Guid Id, string Name, string Type, int Kcal, int Protein)
 {
     public static MealSearchDto From(DietPlanner.Domain.Entities.Meal meal)
     {
         ArgumentNullException.ThrowIfNull(meal);
-        return new MealSearchDto(meal.Id, meal.Name, meal.Type.ToString().ToLowerInvariant());
+        return new MealSearchDto(
+            meal.Id,
+            meal.Name,
+            meal.Type.ToString().ToLowerInvariant(),
+            meal.Kcal,
+            meal.Protein);
     }
 }

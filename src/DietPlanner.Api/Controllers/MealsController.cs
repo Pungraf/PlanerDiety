@@ -55,11 +55,11 @@ public sealed class MealsController : ControllerBase
     }
 }
 
-public sealed record MealSearchResponse(Guid Id, string Name, string Type)
+public sealed record MealSearchResponse(Guid Id, string Name, string Type, int Kcal, int Protein)
 {
     public static MealSearchResponse From(MealSearchDto meal)
     {
         ArgumentNullException.ThrowIfNull(meal);
-        return new MealSearchResponse(meal.Id, meal.Name, meal.Type);
+        return new MealSearchResponse(meal.Id, meal.Name, meal.Type, meal.Kcal, meal.Protein);
     }
 }

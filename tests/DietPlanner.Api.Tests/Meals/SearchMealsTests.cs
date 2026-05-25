@@ -20,8 +20,11 @@ public class SearchMealsTests
         payload.Should().NotBeNull();
         var meals = payload!;
         meals.Select(x => x.Id).Should().Equal(TestData.LunchMealId);
+        meals[0].Name.Should().Be("Chicken Tomato Pasta");
         meals[0].Type.Should().Be("lunch");
+        meals[0].Kcal.Should().Be(610);
+        meals[0].Protein.Should().Be(35);
     }
 
-    private sealed record MealSearchResponse(Guid Id, string Name, string Type);
+    private sealed record MealSearchResponse(Guid Id, string Name, string Type, int Kcal, int Protein);
 }
