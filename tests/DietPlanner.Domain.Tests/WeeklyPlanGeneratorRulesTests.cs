@@ -141,17 +141,22 @@ public class WeeklyPlanGeneratorRulesTests
     }
 
     [Fact]
-    public void Generate_WithTooFewLunchMeals_ShouldThrowInvalidOperationException()
+    public void Generate_WithSingleEligibleLunchMeal_ShouldReuseItAcrossLunchPairs()
     {
         var generator = new WeeklyPlanGenerator();
+        var meals = TestMeals.PoolWithSingleLunch();
 
-        var act = () => generator.Generate(new WeeklyPlanGenerationRequest(
+        var plan = generator.Generate(new WeeklyPlanGenerationRequest(
             Guid.NewGuid(),
             new DateOnly(2026, 5, 25),
             DinnerMode.Standard,
-            TestMeals.PoolWithSingleLunch()));
+            meals));
 
-        act.Should().Throw<InvalidOperationException>();
+        var expectedLunchId = meals.Single(meal => meal.Type == MealType.Lunch).Id;
+        var assignedLunchIds = plan.Days
+            .Select(day => GetMealId(day, MealSlotType.Lunch));
+
+        assignedLunchIds.Should().OnlyContain(mealId => mealId == expectedLunchId);
     }
 
     [Fact]

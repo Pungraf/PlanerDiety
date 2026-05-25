@@ -33,7 +33,7 @@ public sealed class WeeklyPlanGenerator : IWeeklyPlanGenerator
             : meals.Where(meal => meal.Type == MealType.Dinner).ToArray();
 
         EnsureEligiblePoolSize(breakfastMeals, 2, "At least two non-dessert breakfast meals are required.");
-        EnsureEligiblePoolSize(lunchMeals, 2, "At least two lunch meals are required.");
+        EnsureEligiblePoolSize(lunchMeals, 1, "At least one lunch meal is required.");
         EnsureEligiblePoolSize(
             dinnerMeals,
             request.DinnerMode == DinnerMode.BreakfastStyle ? 3 : 1,
