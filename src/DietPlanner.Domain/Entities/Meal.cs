@@ -6,7 +6,7 @@ public class Meal
 {
     private readonly List<MealIngredient> _ingredients = [];
 
-    public Guid Id { get; init; }
+    public Guid Id { get; }
 
     public string Name { get; private set; }
 

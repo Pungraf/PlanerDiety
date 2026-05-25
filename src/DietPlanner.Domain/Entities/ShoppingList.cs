@@ -4,7 +4,7 @@ public class ShoppingList
 {
     private readonly List<ShoppingListItem> _items = [];
 
-    public Guid Id { get; init; }
+    public Guid Id { get; }
 
     public Guid WeeklyPlanId { get; private set; }
 

@@ -4,7 +4,7 @@ public class DailyPlan
 {
     private readonly List<DailyMealSlot> _mealSlots = [];
 
-    public Guid Id { get; init; }
+    public Guid Id { get; }
 
     public DateOnly Date { get; private set; }
 

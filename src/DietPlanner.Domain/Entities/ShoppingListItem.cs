@@ -2,7 +2,7 @@ namespace DietPlanner.Domain.Entities;
 
 public class ShoppingListItem
 {
-    public Guid Id { get; init; }
+    public Guid Id { get; }
 
     public Guid IngredientId { get; private set; }
 

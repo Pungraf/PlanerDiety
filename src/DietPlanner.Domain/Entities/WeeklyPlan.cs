@@ -6,7 +6,7 @@ public class WeeklyPlan
 {
     private readonly List<DailyPlan> _days = [];
 
-    public Guid Id { get; init; }
+    public Guid Id { get; }
 
     public Guid UserId { get; private set; }
 

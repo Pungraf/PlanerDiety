@@ -2,9 +2,9 @@ namespace DietPlanner.Domain.Entities;
 
 public class MealIngredient
 {
-    public Guid MealId { get; init; }
+    public Guid MealId { get; }
 
-    public Guid IngredientId { get; init; }
+    public Guid IngredientId { get; }
 
     public decimal Quantity { get; private set; }
 

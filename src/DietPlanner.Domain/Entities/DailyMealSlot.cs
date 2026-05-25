@@ -4,7 +4,7 @@ namespace DietPlanner.Domain.Entities;
 
 public class DailyMealSlot
 {
-    public Guid Id { get; init; }
+    public Guid Id { get; }
 
     public MealSlotType SlotType { get; private set; }
 
