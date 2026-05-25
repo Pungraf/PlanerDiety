@@ -24,6 +24,12 @@ public class DietPlannerDbContext : DbContext, IApplicationDbContext
 
     public DbSet<ShoppingListItem> ShoppingListItems => Set<ShoppingListItem>();
 
+    public DbSet<Meal> Meals => Set<Meal>();
+
+    public DbSet<Ingredient> Ingredients => Set<Ingredient>();
+
+    public DbSet<MealIngredient> MealIngredients => Set<MealIngredient>();
+
     public Task AddWeeklyPlanAsync(WeeklyPlan weeklyPlan, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(weeklyPlan);
@@ -56,6 +62,8 @@ public class DietPlannerDbContext : DbContext, IApplicationDbContext
         }
 
         var plans = await WeeklyPlans
+            .Include(plan => plan.Days)
+            .ThenInclude(day => day.MealSlots)
             .Where(plan => plan.UserId == userId)
             .OrderByDescending(plan => plan.StartDate)
             .ToListAsync(cancellationToken);
@@ -76,6 +84,50 @@ public class DietPlannerDbContext : DbContext, IApplicationDbContext
             .Where(plan => plan.UserId == userId && plan.Status == WeeklyPlanStatus.Draft)
             .OrderByDescending(plan => plan.StartDate)
             .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public Task<Meal?> FindMealByIdAsync(Guid mealId, CancellationToken cancellationToken)
+    {
+        if (mealId == Guid.Empty)
+        {
+            throw new ArgumentException("Value cannot be empty.", nameof(mealId));
+        }
+
+        return Meals.SingleOrDefaultAsync(meal => meal.Id == mealId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Meal>> SearchMealsAsync(
+        string? name,
+        MealType? type,
+        string? ingredient,
+        CancellationToken cancellationToken)
+    {
+        IQueryable<Meal> query = Meals.Include(meal => meal.Ingredients);
+
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            query = query.Where(meal => EF.Functions.Like(meal.Name, $"%{name.Trim()}%"));
+        }
+
+        if (type.HasValue)
+        {
+            query = query.Where(meal => meal.Type == type.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(ingredient))
+        {
+            var ingredientFilter = ingredient.Trim();
+            var mealIds = from mealIngredient in MealIngredients
+                          join ingredientEntity in Ingredients on mealIngredient.IngredientId equals ingredientEntity.Id
+                          where EF.Functions.Like(ingredientEntity.Name, $"%{ingredientFilter}%")
+                          select mealIngredient.MealId;
+
+            query = query.Where(meal => mealIds.Contains(meal.Id));
+        }
+
+        return await query
+            .OrderBy(meal => meal.Name)
+            .ToListAsync(cancellationToken);
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

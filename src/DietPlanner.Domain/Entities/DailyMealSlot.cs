@@ -16,4 +16,9 @@ public class DailyMealSlot
         SlotType = Guard.AgainstUndefinedEnum(slotType, nameof(slotType));
         MealId = mealId.HasValue ? Guard.AgainstEmpty(mealId.Value, nameof(mealId)) : null;
     }
+
+    public void ReplaceMeal(Guid mealId)
+    {
+        MealId = Guard.AgainstEmpty(mealId, nameof(mealId));
+    }
 }

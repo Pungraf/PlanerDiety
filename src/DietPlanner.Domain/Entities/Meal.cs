@@ -29,4 +29,10 @@ public class Meal
         Kcal = Guard.AgainstNegative(kcal, nameof(kcal));
         Protein = Guard.AgainstNegative(protein, nameof(protein));
     }
+
+    internal void AddIngredient(MealIngredient ingredient)
+    {
+        ArgumentNullException.ThrowIfNull(ingredient);
+        _ingredients.Add(ingredient);
+    }
 }

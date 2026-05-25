@@ -1,6 +1,7 @@
 using System.Text;
 using DietPlanner.Application.Abstractions;
 using DietPlanner.Application.Auth;
+using DietPlanner.Application.Meals.Queries;
 using DietPlanner.Application.Plans.Commands;
 using DietPlanner.Application.Plans.Queries;
 using DietPlanner.Infrastructure.Auth;
@@ -18,6 +19,8 @@ builder.Services.AddScoped<IApplicationDbContext>(serviceProvider => serviceProv
 builder.Services.AddScoped<GoogleLoginHandler>();
 builder.Services.AddScoped<GetCurrentPlanHandler>();
 builder.Services.AddScoped<ActivateDraftHandler>();
+builder.Services.AddScoped<ReplaceMealHandler>();
+builder.Services.AddScoped<SearchMealsHandler>();
 builder.Services.AddScoped<IGoogleTokenVerifier, GoogleTokenVerifier>();
 builder.Services.AddScoped<ISessionTokenService, JwtSessionTokenService>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

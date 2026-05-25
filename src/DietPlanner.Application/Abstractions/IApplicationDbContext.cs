@@ -1,3 +1,4 @@
+using DietPlanner.Domain.Enums;
 using DietPlanner.Domain.Entities;
 
 namespace DietPlanner.Application.Abstractions;
@@ -15,6 +16,10 @@ public interface IApplicationDbContext
     Task<WeeklyPlan?> FindReadableWeeklyPlanAsync(Guid userId, CancellationToken cancellationToken);
 
     Task<WeeklyPlan?> FindLatestDraftWeeklyPlanAsync(Guid userId, CancellationToken cancellationToken);
+
+    Task<Meal?> FindMealByIdAsync(Guid mealId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<Meal>> SearchMealsAsync(string? name, MealType? type, string? ingredient, CancellationToken cancellationToken);
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

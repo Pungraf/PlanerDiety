@@ -61,7 +61,10 @@ internal sealed class PlansApiFactory : WebApplicationFactory<Program>, IAsyncDi
     {
         await using var scope = Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<DietPlannerDbContext>();
-        return await dbContext.WeeklyPlans.SingleOrDefaultAsync(plan => plan.UserId == User.Id);
+        return await dbContext.WeeklyPlans
+            .Include(plan => plan.Days)
+            .ThenInclude(day => day.MealSlots)
+            .SingleOrDefaultAsync(plan => plan.UserId == User.Id);
     }
 
     public async Task<IReadOnlyList<WeeklyPlan>> ReadPlansAsync()
@@ -106,6 +109,8 @@ internal sealed class PlansApiFactory : WebApplicationFactory<Program>, IAsyncDi
         await using var scope = Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<DietPlannerDbContext>();
         await dbContext.Users.AddAsync(User);
+        await dbContext.Ingredients.AddRangeAsync(TestData.CreateIngredients());
+        await dbContext.Meals.AddRangeAsync(TestData.CreateMeals());
         await dbContext.WeeklyPlans.AddRangeAsync(plans);
         await dbContext.SaveChangesAsync();
     }
