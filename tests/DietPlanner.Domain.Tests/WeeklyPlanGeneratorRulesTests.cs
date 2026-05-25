@@ -113,6 +113,28 @@ public class WeeklyPlanGeneratorRulesTests
     }
 
     [Fact]
+    public void Generate_WithBreakfastStyleDinnerMode_ShouldUseBreakfastMealsForDinnerSlot()
+    {
+        var generator = new WeeklyPlanGenerator();
+        var meals = TestMeals.ValidPool();
+        var allowedDinnerIds = meals
+            .Where(meal => meal.Type == MealType.Breakfast && !meal.IsDessert)
+            .Select(meal => meal.Id)
+            .ToHashSet();
+
+        var plan = generator.Generate(new WeeklyPlanGenerationRequest(
+            Guid.NewGuid(),
+            new DateOnly(2026, 5, 25),
+            DinnerMode.BreakfastStyle,
+            meals));
+
+        var assignedDinnerIds = plan.Days
+            .Select(day => GetMealId(day, MealSlotType.Dinner));
+
+        assignedDinnerIds.Should().OnlyContain(mealId => allowedDinnerIds.Contains(mealId));
+    }
+
+    [Fact]
     public void Generate_WithTooFewBreakfastMealsForStandardMode_ShouldThrowInvalidOperationException()
     {
         var generator = new WeeklyPlanGenerator();
@@ -122,6 +144,20 @@ public class WeeklyPlanGeneratorRulesTests
             new DateOnly(2026, 5, 25),
             DinnerMode.Standard,
             TestMeals.StandardPoolWithSingleBreakfast()));
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Generate_WithTooFewBreakfastMealsForBreakfastStyleMode_ShouldThrowInvalidOperationException()
+    {
+        var generator = new WeeklyPlanGenerator();
+
+        var act = () => generator.Generate(new WeeklyPlanGenerationRequest(
+            Guid.NewGuid(),
+            new DateOnly(2026, 5, 25),
+            DinnerMode.BreakfastStyle,
+            TestMeals.BreakfastStylePoolWithTwoBreakfasts()));
 
         act.Should().Throw<InvalidOperationException>();
     }

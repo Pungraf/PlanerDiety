@@ -3,6 +3,6 @@ namespace DietPlanner.Domain.Enums;
 public enum DinnerMode
 {
     Standard = 1,
-    LunchStyle = 2,
-    BreakfastStyle = LunchStyle
+    BreakfastStyle = 2,
+    LunchStyle = 3
 }

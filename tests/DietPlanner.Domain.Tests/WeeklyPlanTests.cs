@@ -45,6 +45,12 @@ public class WeeklyPlanTests
     }
 
     [Fact]
+    public void DinnerModes_ShouldHaveDistinctValues()
+    {
+        ((int)DinnerMode.BreakfastStyle).Should().NotBe((int)DinnerMode.LunchStyle);
+    }
+
+    [Fact]
     public void AddDay_ShouldNotBePublic()
     {
         var method = typeof(WeeklyPlan).GetMethod(

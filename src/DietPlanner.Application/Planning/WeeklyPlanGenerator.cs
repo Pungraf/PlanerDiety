@@ -28,18 +28,29 @@ public sealed class WeeklyPlanGenerator : IWeeklyPlanGenerator
         var lunchMeals = meals
             .Where(meal => meal.Type == MealType.Lunch)
             .ToArray();
-        var dinnerMeals = request.DinnerMode == DinnerMode.LunchStyle
-            ? lunchMeals
-            : meals.Where(meal => meal.Type == MealType.Dinner).ToArray();
+        var dinnerMeals = request.DinnerMode switch
+        {
+            DinnerMode.BreakfastStyle => breakfastMeals,
+            DinnerMode.LunchStyle => lunchMeals,
+            _ => meals.Where(meal => meal.Type == MealType.Dinner).ToArray()
+        };
 
         EnsureEligiblePoolSize(breakfastMeals, 2, "At least two non-dessert breakfast meals are required.");
         EnsureEligiblePoolSize(lunchMeals, 1, "At least one lunch meal is required.");
         EnsureEligiblePoolSize(
             dinnerMeals,
-            request.DinnerMode == DinnerMode.LunchStyle ? 2 : 1,
-            request.DinnerMode == DinnerMode.LunchStyle
-                ? "At least two lunch meals are required for lunch-style dinners."
-                : "At least one dinner meal is required.");
+            request.DinnerMode switch
+            {
+                DinnerMode.BreakfastStyle => 3,
+                DinnerMode.LunchStyle => 2,
+                _ => 1
+            },
+            request.DinnerMode switch
+            {
+                DinnerMode.BreakfastStyle => "At least three non-dessert breakfast meals are required for breakfast-style dinners.",
+                DinnerMode.LunchStyle => "At least two lunch meals are required for lunch-style dinners.",
+                _ => "At least one dinner meal is required."
+            });
 
         var plan = WeeklyPlan.CreateDraft(request.UserId, request.StartDate, request.DinnerMode);
 
@@ -56,9 +67,12 @@ public sealed class WeeklyPlanGenerator : IWeeklyPlanGenerator
                 breakfastMeals[(breakfastStartIndex + 1) % breakfastMeals.Length].Id));
             day.AddSlot(new DailyMealSlot(Guid.NewGuid(), MealSlotType.Lunch, lunch.Id));
 
-            var dinner = request.DinnerMode == DinnerMode.LunchStyle
-                ? dinnerMeals[((dayOffset / 2) + 1) % dinnerMeals.Length]
-                : dinnerMeals[dayOffset % dinnerMeals.Length];
+            var dinner = request.DinnerMode switch
+            {
+                DinnerMode.BreakfastStyle => breakfastMeals[(breakfastStartIndex + 2) % breakfastMeals.Length],
+                DinnerMode.LunchStyle => dinnerMeals[((dayOffset / 2) + 1) % dinnerMeals.Length],
+                _ => dinnerMeals[dayOffset % dinnerMeals.Length]
+            };
 
             day.AddSlot(new DailyMealSlot(Guid.NewGuid(), MealSlotType.Dinner, dinner.Id));
 
