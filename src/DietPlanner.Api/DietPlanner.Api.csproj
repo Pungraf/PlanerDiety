@@ -4,4 +4,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\\DietPlanner.Application\\DietPlanner.Application.csproj" />
+    <ProjectReference Include="..\\DietPlanner.Infrastructure\\DietPlanner.Infrastructure.csproj" />
+  </ItemGroup>
 </Project>
