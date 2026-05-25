@@ -10,8 +10,6 @@ public class DailyPlan
 
     public IReadOnlyCollection<DailyMealSlot> MealSlots => _mealSlots;
 
-    public IReadOnlyCollection<DailyMealSlot> Slots => _mealSlots;
-
     public DailyPlan(Guid id, DateOnly date)
     {
         Id = Guard.AgainstEmpty(id, nameof(id));

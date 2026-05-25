@@ -16,6 +16,7 @@ public sealed class WeeklyPlanGenerator : IWeeklyPlanGenerator
     public WeeklyPlan Generate(WeeklyPlanGenerationRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Meals);
 
         if (request.Meals.Count == 0)
         {
@@ -23,6 +24,12 @@ public sealed class WeeklyPlanGenerator : IWeeklyPlanGenerator
         }
 
         var meals = request.Meals.ToArray();
+
+        if (meals.Any(meal => meal is null))
+        {
+            throw new ArgumentException("Meals cannot contain null entries.", nameof(request));
+        }
+
         var mealIndex = 0;
         var plan = WeeklyPlan.CreateDraft(request.UserId, request.StartDate, request.DinnerMode);
 
