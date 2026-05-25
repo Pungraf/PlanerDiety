@@ -26,4 +26,12 @@ public class WeeklyPlanTests
 
         act.Should().Throw<InvalidOperationException>();
     }
+
+    [Fact]
+    public void CreateDraft_WithEmptyUserId_ShouldThrowArgumentException()
+    {
+        var act = () => WeeklyPlan.CreateDraft(Guid.Empty, new DateOnly(2026, 5, 25), DinnerMode.BreakfastStyle);
+
+        act.Should().Throw<ArgumentException>();
+    }
 }

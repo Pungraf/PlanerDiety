@@ -13,4 +13,12 @@ public class MealIngredientTests
         ingredient.Unit.Should().Be("pcs");
         ingredient.ShoppingCategory.Should().Be("Produce");
     }
+
+    [Fact]
+    public void Constructor_WithBlankShoppingCategory_ShouldThrowArgumentException()
+    {
+        var act = () => new MealIngredient(Guid.NewGuid(), Guid.NewGuid(), 2.5m, "pcs", " ");
+
+        act.Should().Throw<ArgumentException>();
+    }
 }

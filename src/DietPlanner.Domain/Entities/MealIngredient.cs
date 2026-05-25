@@ -14,10 +14,10 @@ public class MealIngredient
 
     public MealIngredient(Guid mealId, Guid ingredientId, decimal quantity, string unit, string shoppingCategory)
     {
-        MealId = mealId;
-        IngredientId = ingredientId;
-        Quantity = quantity;
-        Unit = unit;
-        ShoppingCategory = shoppingCategory;
+        MealId = Guard.AgainstEmpty(mealId, nameof(mealId));
+        IngredientId = Guard.AgainstEmpty(ingredientId, nameof(ingredientId));
+        Quantity = Guard.AgainstNonPositive(quantity, nameof(quantity));
+        Unit = Guard.AgainstBlank(unit, nameof(unit));
+        ShoppingCategory = Guard.AgainstBlank(shoppingCategory, nameof(shoppingCategory));
     }
 }

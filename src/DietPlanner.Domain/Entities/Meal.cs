@@ -22,11 +22,11 @@ public class Meal
 
     public Meal(Guid id, string name, MealType type, bool isDessert, int kcal, int protein)
     {
-        Id = id;
-        Name = name;
+        Id = Guard.AgainstEmpty(id, nameof(id));
+        Name = Guard.AgainstBlank(name, nameof(name));
         Type = type;
         IsDessert = isDessert;
-        Kcal = kcal;
-        Protein = protein;
+        Kcal = Guard.AgainstNegative(kcal, nameof(kcal));
+        Protein = Guard.AgainstNegative(protein, nameof(protein));
     }
 }

@@ -12,9 +12,9 @@ public class ShoppingListItem
 
     public ShoppingListItem(Guid id, Guid ingredientId, decimal quantity, string unit)
     {
-        Id = id;
-        IngredientId = ingredientId;
-        Quantity = quantity;
-        Unit = unit;
+        Id = Guard.AgainstEmpty(id, nameof(id));
+        IngredientId = Guard.AgainstEmpty(ingredientId, nameof(ingredientId));
+        Quantity = Guard.AgainstNonPositive(quantity, nameof(quantity));
+        Unit = Guard.AgainstBlank(unit, nameof(unit));
     }
 }

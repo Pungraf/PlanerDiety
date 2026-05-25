@@ -8,7 +8,7 @@ public class User
 
     public User(Guid id, string name)
     {
-        Id = id;
-        Name = name;
+        Id = Guard.AgainstEmpty(id, nameof(id));
+        Name = Guard.AgainstBlank(name, nameof(name));
     }
 }

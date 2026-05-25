@@ -10,8 +10,8 @@ public class Ingredient
 
     public Ingredient(Guid id, string name, string unit)
     {
-        Id = id;
-        Name = name;
-        Unit = unit;
+        Id = Guard.AgainstEmpty(id, nameof(id));
+        Name = Guard.AgainstBlank(name, nameof(name));
+        Unit = Guard.AgainstBlank(unit, nameof(unit));
     }
 }
