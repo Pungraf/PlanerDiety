@@ -12,8 +12,8 @@ public class DailyMealSlot
 
     public DailyMealSlot(Guid id, MealSlotType slotType, Guid? mealId = null)
     {
-        Id = id;
-        SlotType = slotType;
-        MealId = mealId;
+        Id = Guard.AgainstEmpty(id, nameof(id));
+        SlotType = Guard.AgainstUndefinedEnum(slotType, nameof(slotType));
+        MealId = mealId.HasValue ? Guard.AgainstEmpty(mealId.Value, nameof(mealId)) : null;
     }
 }

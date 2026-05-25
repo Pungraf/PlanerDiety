@@ -24,7 +24,7 @@ public class Meal
     {
         Id = Guard.AgainstEmpty(id, nameof(id));
         Name = Guard.AgainstBlank(name, nameof(name));
-        Type = type;
+        Type = Guard.AgainstUndefinedEnum(type, nameof(type));
         IsDessert = isDessert;
         Kcal = Guard.AgainstNegative(kcal, nameof(kcal));
         Protein = Guard.AgainstNegative(protein, nameof(protein));

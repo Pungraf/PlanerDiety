@@ -12,7 +12,7 @@ public class DailyPlan
 
     public DailyPlan(Guid id, DateOnly date)
     {
-        Id = id;
+        Id = Guard.AgainstEmpty(id, nameof(id));
         Date = date;
     }
 }

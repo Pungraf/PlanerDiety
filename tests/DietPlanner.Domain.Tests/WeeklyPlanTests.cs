@@ -34,4 +34,12 @@ public class WeeklyPlanTests
 
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void CreateDraft_WithInvalidDinnerMode_ShouldThrowArgumentOutOfRangeException()
+    {
+        var act = () => WeeklyPlan.CreateDraft(Guid.NewGuid(), new DateOnly(2026, 5, 25), (DinnerMode)99);
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
 }

@@ -12,7 +12,7 @@ public class ShoppingList
 
     public ShoppingList(Guid id, Guid weeklyPlanId)
     {
-        Id = id;
-        WeeklyPlanId = weeklyPlanId;
+        Id = Guard.AgainstEmpty(id, nameof(id));
+        WeeklyPlanId = Guard.AgainstEmpty(weeklyPlanId, nameof(weeklyPlanId));
     }
 }

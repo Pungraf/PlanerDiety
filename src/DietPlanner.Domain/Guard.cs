@@ -41,4 +41,15 @@ internal static class Guard
 
         return value;
     }
+
+    public static TEnum AgainstUndefinedEnum<TEnum>(TEnum value, string paramName)
+        where TEnum : struct, Enum
+    {
+        if (!Enum.IsDefined(value))
+        {
+            throw new ArgumentOutOfRangeException(paramName, value, "Enum value is not defined.");
+        }
+
+        return value;
+    }
 }

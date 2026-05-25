@@ -29,7 +29,12 @@ public class WeeklyPlan
 
     public static WeeklyPlan CreateDraft(Guid userId, DateOnly startDate, DinnerMode dinnerMode)
     {
-        return new WeeklyPlan(Guid.NewGuid(), Guard.AgainstEmpty(userId, nameof(userId)), startDate, dinnerMode, WeeklyPlanStatus.Draft);
+        return new WeeklyPlan(
+            Guid.NewGuid(),
+            Guard.AgainstEmpty(userId, nameof(userId)),
+            startDate,
+            Guard.AgainstUndefinedEnum(dinnerMode, nameof(dinnerMode)),
+            WeeklyPlanStatus.Draft);
     }
 
     public void Activate()

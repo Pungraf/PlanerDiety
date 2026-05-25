@@ -23,4 +23,12 @@ public class MealTests
 
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
+
+    [Fact]
+    public void Constructor_WithInvalidMealType_ShouldThrowArgumentOutOfRangeException()
+    {
+        var act = () => new Meal(Guid.NewGuid(), "Skyr Bowl", (MealType)99, isDessert: false, kcal: 420, protein: 32);
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
 }
