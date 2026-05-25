@@ -77,6 +77,11 @@ public sealed class PlansController : ControllerBase
             return BadRequest();
         }
 
+        if (!Enum.IsDefined(parsedSlotType))
+        {
+            return BadRequest();
+        }
+
         if (request is null || request.MealId == Guid.Empty)
         {
             return BadRequest();

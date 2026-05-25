@@ -26,5 +26,16 @@ public class SearchMealsTests
         meals[0].Protein.Should().Be(35);
     }
 
+    [Fact]
+    public async Task SearchMeals_ShouldReturnBadRequest_WhenTypeIsAnUndefinedEnumValue()
+    {
+        await using var app = await DietPlanner.Api.Tests.Plans.PlansApiFactory.WithDraftPlanAsync();
+        using var client = await app.CreateAuthenticatedClientAsync();
+
+        var response = await client.GetAsync("/api/meals?type=999");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     private sealed record MealSearchResponse(Guid Id, string Name, string Type, int Kcal, int Protein);
 }

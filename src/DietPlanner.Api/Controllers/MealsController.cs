@@ -50,6 +50,11 @@ public sealed class MealsController : ControllerBase
             return false;
         }
 
+        if (!Enum.IsDefined(mealType))
+        {
+            return false;
+        }
+
         parsedType = mealType;
         return true;
     }

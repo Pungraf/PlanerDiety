@@ -98,5 +98,19 @@ public class ReplaceMealTests
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    [Fact]
+    public async Task ReplaceMeal_ShouldReturnBadRequest_WhenSlotTypeIsAnUndefinedEnumValue()
+    {
+        await using var app = await PlansApiFactory.WithDraftPlanAsync();
+        using var client = await app.CreateAuthenticatedClientAsync();
+
+        var response = await client.PutAsJsonAsync("/api/plans/current/days/2026-05-26/slots/999", new
+        {
+            MealId = TestData.LunchMealId
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     private sealed record CurrentPlanResponse(Guid Id, string Status, string StartDate, string DinnerMode);
 }
