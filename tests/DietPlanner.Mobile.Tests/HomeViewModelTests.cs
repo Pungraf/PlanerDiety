@@ -1,3 +1,4 @@
+using System.Globalization;
 using DietPlanner.Mobile.Services;
 using DietPlanner.Mobile.ViewModels;
 using DietPlanner.Mobile.Navigation;
@@ -62,6 +63,31 @@ public sealed class HomeViewModelTests
         targetDay = Assert.Single(viewModel.Days, day => day.Date == targetDate);
         Assert.Equal(1800, targetDay.TotalKcal);
         Assert.Equal(110, targetDay.TotalProtein);
+    }
+
+    [Fact]
+    public async Task LoadAsync_ShouldRejectNonIsoApiDates()
+    {
+        using var cultureScope = new CultureScope(new CultureInfo("pl-PL"));
+        var plansClient = new FakePlansApiClient(
+            new CurrentPlanDto(
+                Guid.NewGuid(),
+                "active",
+                "26.05.2026",
+                [
+                    new PlanDayDto(
+                        "26.05.2026",
+                        [
+                            new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Oats Bowl", 500, 30)
+                        ])
+                ]));
+        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new InMemoryMealSearchContextStore());
+
+        await viewModel.LoadAsync();
+
+        Assert.Equal("The API returned an invalid plan date.", viewModel.ErrorMessage);
+        Assert.Null(viewModel.SelectedDay);
+        Assert.Empty(viewModel.Days);
     }
 
     private static CurrentPlanDto CreatePlan(
@@ -132,6 +158,26 @@ public sealed class HomeViewModelTests
         public Task GoToAsync(string route)
         {
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class CultureScope : IDisposable
+    {
+        private readonly CultureInfo _originalCulture;
+        private readonly CultureInfo _originalUiCulture;
+
+        public CultureScope(CultureInfo culture)
+        {
+            _originalCulture = CultureInfo.CurrentCulture;
+            _originalUiCulture = CultureInfo.CurrentUICulture;
+            CultureInfo.CurrentCulture = culture;
+            CultureInfo.CurrentUICulture = culture;
+        }
+
+        public void Dispose()
+        {
+            CultureInfo.CurrentCulture = _originalCulture;
+            CultureInfo.CurrentUICulture = _originalUiCulture;
         }
     }
 }

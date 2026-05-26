@@ -12,7 +12,6 @@ public sealed class MealSearchViewModel : INotifyPropertyChanged
     private readonly IPlansApiClient _plansApiClient;
     private readonly IMealSearchContextStore _mealSearchContextStore;
     private readonly IAppNavigator _navigator;
-    private List<MealSearchMealViewModel> _allMeals = [];
     private string? _searchText;
     private string? _errorMessage;
 
@@ -51,7 +50,7 @@ public sealed class MealSearchViewModel : INotifyPropertyChanged
 
             _searchText = value;
             OnPropertyChanged();
-            ApplyFilter();
+            _ = LoadMealsAsync(CancellationToken.None);
         }
     }
 
@@ -78,13 +77,7 @@ public sealed class MealSearchViewModel : INotifyPropertyChanged
 
         try
         {
-            var meals = await _plansApiClient.SearchMealsAsync(null, cancellationToken);
-            _allMeals = meals
-                .Select(meal => new MealSearchMealViewModel(meal.Id, meal.Name, meal.Type, meal.Kcal, meal.Protein))
-                .OrderBy(meal => meal.Name)
-                .ToList();
-
-            ApplyFilter();
+            await LoadMealsAsync(cancellationToken);
         }
         catch (Exception exception)
         {
@@ -105,8 +98,8 @@ public sealed class MealSearchViewModel : INotifyPropertyChanged
         try
         {
             await _plansApiClient.ReplaceMealAsync(context.Date, context.SlotType, meal.Id);
-            _mealSearchContextStore.Current = null;
             await _navigator.GoToAsync("//home");
+            _mealSearchContextStore.Current = null;
         }
         catch (Exception exception)
         {
@@ -114,18 +107,25 @@ public sealed class MealSearchViewModel : INotifyPropertyChanged
         }
     }
 
-    private void ApplyFilter()
+    private async Task LoadMealsAsync(CancellationToken cancellationToken)
     {
-        var filteredMeals = string.IsNullOrWhiteSpace(SearchText)
-            ? _allMeals
-            : _allMeals
-                .Where(meal => meal.Name.Contains(SearchText.Trim(), StringComparison.OrdinalIgnoreCase))
-                .ToList();
-
-        Meals.Clear();
-        foreach (var meal in filteredMeals)
+        try
         {
-            Meals.Add(meal);
+            var meals = await _plansApiClient.SearchMealsAsync(SearchText, cancellationToken);
+            var mappedMeals = meals
+                .Select(meal => new MealSearchMealViewModel(meal.Id, meal.Name, meal.Type, meal.Kcal, meal.Protein))
+                .OrderBy(meal => meal.Name)
+                .ToArray();
+
+            Meals.Clear();
+            foreach (var meal in mappedMeals)
+            {
+                Meals.Add(meal);
+            }
+        }
+        catch (Exception exception)
+        {
+            ErrorMessage = exception.Message;
         }
     }
 

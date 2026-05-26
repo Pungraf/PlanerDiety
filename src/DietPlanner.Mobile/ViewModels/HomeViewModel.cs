@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using DietPlanner.Mobile.Commands;
 using DietPlanner.Mobile.Navigation;
@@ -9,6 +10,7 @@ namespace DietPlanner.Mobile.ViewModels;
 
 public sealed class HomeViewModel : INotifyPropertyChanged
 {
+    private const string ApiDateFormat = "yyyy-MM-dd";
     private readonly IPlansApiClient _plansApiClient;
     private readonly IAppNavigator _navigator;
     private readonly IMealSearchContextStore _mealSearchContextStore;
@@ -79,9 +81,7 @@ public sealed class HomeViewModel : INotifyPropertyChanged
         try
         {
             var plan = await _plansApiClient.GetCurrentPlanAsync(cancellationToken);
-            DateOnly? startDate = DateOnly.TryParse(plan.StartDate, out var parsedStartDate)
-                ? parsedStartDate
-                : null;
+            var startDate = ParseApiDate(plan.StartDate);
             var selectedDate = preferredDate ?? SelectedDay?.Date ?? startDate;
 
             var mappedDays = plan.Days
@@ -137,7 +137,7 @@ public sealed class HomeViewModel : INotifyPropertyChanged
 
     private static HomeDayViewModel MapDay(PlanDayDto day)
     {
-        var parsedDate = DateOnly.Parse(day.Date);
+        var parsedDate = ParseApiDate(day.Date);
         var meals = day.Meals.Select(slot => new HomeMealSlotViewModel(
             slot.SlotType,
             slot.Name,
@@ -145,6 +145,16 @@ public sealed class HomeViewModel : INotifyPropertyChanged
             slot.Protein)).ToArray();
 
         return new HomeDayViewModel(parsedDate, meals);
+    }
+
+    private static DateOnly ParseApiDate(string value)
+    {
+        if (DateOnly.TryParseExact(value, ApiDateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
+        {
+            return parsedDate;
+        }
+
+        throw new InvalidOperationException("The API returned an invalid plan date.");
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
