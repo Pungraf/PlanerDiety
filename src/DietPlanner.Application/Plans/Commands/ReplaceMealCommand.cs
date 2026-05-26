@@ -1,4 +1,5 @@
 using DietPlanner.Application.Abstractions;
+using DietPlanner.Application.Shopping;
 using DietPlanner.Domain.Entities;
 using DietPlanner.Domain.Enums;
 
@@ -9,10 +10,12 @@ public sealed record ReplaceMealCommand(Guid UserId, DateOnly Date, MealSlotType
 public sealed class ReplaceMealHandler
 {
     private readonly IApplicationDbContext _dbContext;
+    private readonly IShoppingListSyncService _shoppingListSyncService;
 
-    public ReplaceMealHandler(IApplicationDbContext dbContext)
+    public ReplaceMealHandler(IApplicationDbContext dbContext, IShoppingListSyncService shoppingListSyncService)
     {
         _dbContext = dbContext;
+        _shoppingListSyncService = shoppingListSyncService;
     }
 
     public async Task<ReplaceMealResult?> HandleAsync(ReplaceMealCommand command, CancellationToken cancellationToken)
@@ -40,6 +43,7 @@ public sealed class ReplaceMealHandler
         }
 
         slot.ReplaceMeal(meal.Id);
+        await _shoppingListSyncService.SyncAsync(plan, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return new ReplaceMealResult(command.Date, command.SlotType, meal.Id);

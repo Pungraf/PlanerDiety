@@ -24,6 +24,7 @@ builder.Services.AddScoped<ReplaceMealHandler>();
 builder.Services.AddScoped<CopyDayHandler>();
 builder.Services.AddScoped<SearchMealsHandler>();
 builder.Services.AddScoped<IShoppingListService, ShoppingListService>();
+builder.Services.AddScoped<IShoppingListSyncService, ShoppingListSyncService>();
 builder.Services.AddScoped<IGoogleTokenVerifier, GoogleTokenVerifier>();
 builder.Services.AddScoped<ISessionTokenService, JwtSessionTokenService>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

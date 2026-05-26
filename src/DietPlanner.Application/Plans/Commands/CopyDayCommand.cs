@@ -8,12 +8,12 @@ public sealed record CopyDayCommand(Guid UserId, DateOnly SourceDate, DateOnly T
 public sealed class CopyDayHandler
 {
     private readonly IApplicationDbContext _dbContext;
-    private readonly IShoppingListService _shoppingListService;
+    private readonly IShoppingListSyncService _shoppingListSyncService;
 
-    public CopyDayHandler(IApplicationDbContext dbContext, IShoppingListService shoppingListService)
+    public CopyDayHandler(IApplicationDbContext dbContext, IShoppingListSyncService shoppingListSyncService)
     {
         _dbContext = dbContext;
-        _shoppingListService = shoppingListService;
+        _shoppingListSyncService = shoppingListSyncService;
     }
 
     public async Task<CopyDayResult?> HandleAsync(CopyDayCommand command, CancellationToken cancellationToken)
@@ -29,26 +29,7 @@ public sealed class CopyDayHandler
             return null;
         }
 
-        var mealIds = plan.Days
-            .SelectMany(day => day.MealSlots)
-            .Where(slot => slot.MealId.HasValue)
-            .Select(slot => slot.MealId!.Value)
-            .Distinct()
-            .ToArray();
-
-        var meals = await _dbContext.FindMealsByIdsAsync(mealIds, cancellationToken);
-        var generatedShoppingList = _shoppingListService.GenerateForPlan(plan, meals);
-        var existingShoppingList = await _dbContext.FindShoppingListByWeeklyPlanIdAsync(plan.Id, cancellationToken);
-
-        if (existingShoppingList is null)
-        {
-            await _dbContext.AddShoppingListAsync(generatedShoppingList, cancellationToken);
-        }
-        else
-        {
-            existingShoppingList.ReplaceItems(generatedShoppingList.Items);
-        }
-
+        await _shoppingListSyncService.SyncAsync(plan, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
         return new CopyDayResult(command.SourceDate, command.TargetDate);
     }

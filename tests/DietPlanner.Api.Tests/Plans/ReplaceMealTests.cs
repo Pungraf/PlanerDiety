@@ -12,7 +12,15 @@ public class ReplaceMealTests
     [Fact]
     public async Task ReplaceMeal_ShouldAllowReplacingBreakfastWithLunchMeal()
     {
-        await using var app = await PlansApiFactory.WithDraftPlanAsync();
+        await using var app = await PlansApiFactory.WithActivePlanAsync(userId =>
+            PlansApiFactory.CreateActivePlan(
+                userId,
+                new DateOnly(2026, 5, 25),
+                plan =>
+                {
+                    PlansApiFactory.AssignMeal(plan, new DateOnly(2026, 5, 26), MealSlotType.Breakfast, TestData.BreakfastMealId);
+                    PlansApiFactory.AssignMeal(plan, new DateOnly(2026, 5, 26), MealSlotType.Dinner, TestData.DinnerMealId);
+                }));
         using var client = await app.CreateAuthenticatedClientAsync();
 
         var response = await client.PutAsJsonAsync("/api/plans/current/days/2026-05-26/slots/breakfast", new
@@ -27,6 +35,12 @@ public class ReplaceMealTests
         plan!.Days.Single(x => x.Date == new DateOnly(2026, 5, 26))
             .MealSlots.Single(x => x.SlotType == DietPlanner.Domain.Enums.MealSlotType.Breakfast)
             .MealId.Should().Be(TestData.LunchMealId);
+
+        var shoppingList = await app.ReadShoppingListAsync();
+        shoppingList.Should().NotBeNull();
+        shoppingList!.Items.Should().HaveCount(2);
+        shoppingList.Items.Should().ContainSingle(item => item.IngredientId == TestData.ChickenIngredientId && item.Quantity == 140m && item.Unit == "g");
+        shoppingList.Items.Should().ContainSingle(item => item.IngredientId == TestData.TomatoIngredientId && item.Quantity == 300m && item.Unit == "g");
     }
 
     [Fact]
