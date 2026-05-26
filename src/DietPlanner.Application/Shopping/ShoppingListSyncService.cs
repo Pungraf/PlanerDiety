@@ -35,6 +35,31 @@ public sealed class ShoppingListSyncService : IShoppingListSyncService
             return;
         }
 
-        existingShoppingList.ReplaceItems(generatedShoppingList.Items);
+        existingShoppingList.ReplaceItems(MergeItems(existingShoppingList.Items, generatedShoppingList.Items));
     }
+
+    private static IReadOnlyList<ShoppingListItem> MergeItems(
+        IReadOnlyCollection<ShoppingListItem> existingItems,
+        IReadOnlyCollection<ShoppingListItem> generatedItems)
+    {
+        ArgumentNullException.ThrowIfNull(existingItems);
+        ArgumentNullException.ThrowIfNull(generatedItems);
+
+        var existingByKey = existingItems.ToDictionary(
+            item => new ShoppingListItemKey(item.IngredientId, item.Unit),
+            item => item);
+
+        return generatedItems
+            .Select(item =>
+            {
+                var key = new ShoppingListItemKey(item.IngredientId, item.Unit);
+
+                return existingByKey.TryGetValue(key, out var existingItem)
+                    ? new ShoppingListItem(existingItem.Id, item.IngredientId, item.Quantity, item.Unit, existingItem.IsChecked)
+                    : item;
+            })
+            .ToArray();
+    }
+
+    private sealed record ShoppingListItemKey(Guid IngredientId, string Unit);
 }

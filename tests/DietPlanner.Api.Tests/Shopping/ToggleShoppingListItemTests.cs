@@ -25,6 +25,51 @@ public class ToggleShoppingListItemTests
             TestData.ChickenShoppingListItemId);
         list.SummaryItems.Last().IsChecked.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task ToggleItem_ShouldPreserveCheckedState_WhenShoppingListIsRegenerated()
+    {
+        await using var app = await PlansApiFactory.WithPlanAndShoppingListAsync(
+            userId => PlansApiFactory.CreateActivePlan(
+                userId,
+                new DateOnly(2026, 5, 25),
+                plan =>
+                {
+                    PlansApiFactory.AssignMeal(plan, new DateOnly(2026, 5, 26), DietPlanner.Domain.Enums.MealSlotType.Breakfast, TestData.BreakfastMealId);
+                    PlansApiFactory.AssignMeal(plan, new DateOnly(2026, 5, 26), DietPlanner.Domain.Enums.MealSlotType.Dinner, TestData.DinnerMealId);
+                }),
+            plan =>
+            {
+                var shoppingList = new DietPlanner.Domain.Entities.ShoppingList(Guid.NewGuid(), plan.Id);
+                shoppingList.ReplaceItems(
+                [
+                    new DietPlanner.Domain.Entities.ShoppingListItem(TestData.OatsShoppingListItemId, TestData.OatsIngredientId, 80m, "g"),
+                    new DietPlanner.Domain.Entities.ShoppingListItem(TestData.TomatoSoupShoppingListItemId, TestData.TomatoIngredientId, 180m, "g")
+                ]);
+
+                return shoppingList;
+            });
+        using var client = await app.CreateAuthenticatedClientAsync();
+
+        var toggleResponse = await client.PostAsync($"/api/shopping-lists/current/items/{TestData.OatsShoppingListItemId}/toggle", null);
+        toggleResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var replaceResponse = await client.PutAsJsonAsync("/api/plans/current/days/2026-05-26/slots/dinner", new
+        {
+            MealId = TestData.LunchMealId
+        });
+
+        replaceResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var listResponse = await client.GetAsync("/api/shopping-lists/current");
+        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var list = await listResponse.Content.ReadFromJsonAsync<ShoppingListResponse>();
+        list.Should().NotBeNull();
+
+        var oats = list!.SummaryItems.Single(item => item.Name == "Oats" && item.Unit == "g");
+        oats.IsChecked.Should().BeTrue();
+    }
 }
 
 public sealed record ShoppingListResponse(Guid Id, IReadOnlyList<ShoppingListSummaryItemResponse> SummaryItems);

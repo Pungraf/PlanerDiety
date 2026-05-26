@@ -12,6 +12,7 @@ internal static class TestData
     public static readonly Guid OatsShoppingListItemId = Guid.Parse("2f7cbb06-3dbc-45e8-ae3c-d0202a2c7271");
     public static readonly Guid ChickenShoppingListItemId = Guid.Parse("e08906a1-5d94-44cd-ac40-e76ff3aec0bd");
     public static readonly Guid TomatoShoppingListItemId = Guid.Parse("d0df7412-a8de-4fe5-b8b0-5f74f95ae347");
+    public static readonly Guid TomatoSoupShoppingListItemId = Guid.Parse("80bde8b3-cb6b-4b67-b82a-295a44d7d88c");
     public static readonly Guid OatsIngredientId = Guid.Parse("b4b87663-d745-4769-a702-c657fd647b56");
     public static readonly Guid ChickenIngredientId = Guid.Parse("9243424c-0356-4a8d-9419-7f6d190f2bfd");
     public static readonly Guid TomatoIngredientId = Guid.Parse("eba6ad2d-7589-4e77-bfa3-c14e50921af7");

@@ -73,6 +73,21 @@ internal sealed class PlansApiFactory : WebApplicationFactory<Program>, IAsyncDi
         return factory;
     }
 
+    public static async Task<PlansApiFactory> WithPlanAndShoppingListAsync(
+        Func<Guid, WeeklyPlan> planFactory,
+        Func<WeeklyPlan, ShoppingList> shoppingListFactory)
+    {
+        var factory = new PlansApiFactory();
+        await factory._connection.OpenAsync();
+        factory.User = new User(Guid.NewGuid(), "Ada Lovelace", "ada@example.com", "google-sub-123");
+
+        var plan = planFactory(factory.User.Id);
+        var shoppingList = shoppingListFactory(plan);
+
+        await factory.SeedPlansAsync([plan], shoppingList);
+        return factory;
+    }
+
     public async Task<HttpClient> CreateAuthenticatedClientAsync()
     {
         var client = CreateClient();
