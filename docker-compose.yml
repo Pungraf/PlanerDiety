@@ -1,0 +1,9 @@
+services:
+  dietplanner-api:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    working_dir: /workspace
+    command: ["dotnet", "run", "--project", "src/DietPlanner.Api"]
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./:/workspace
