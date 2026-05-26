@@ -61,6 +61,7 @@ public partial class BaselineCurrentSchema : Migration
                 "Unit" TEXT NOT NULL,
                 "ShoppingCategory" TEXT NOT NULL,
                 CONSTRAINT "PK_MealIngredients" PRIMARY KEY ("MealId", "IngredientId"),
+                CONSTRAINT "FK_MealIngredients_Ingredients_IngredientId" FOREIGN KEY ("IngredientId") REFERENCES "Ingredients" ("Id") ON DELETE RESTRICT,
                 CONSTRAINT "FK_MealIngredients_Meals_MealId" FOREIGN KEY ("MealId") REFERENCES "Meals" ("Id") ON DELETE CASCADE
             );
 

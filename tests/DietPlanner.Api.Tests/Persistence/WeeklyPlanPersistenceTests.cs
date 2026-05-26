@@ -57,6 +57,31 @@ public class WeeklyPlanPersistenceTests
         saved.Items.Select(x => x.Unit).Should().BeEquivalentTo(["g", "ml"]);
     }
 
+    [Fact]
+    public async Task InitializeAsync_ShouldCreateMealIngredientsIngredientForeignKey()
+    {
+        await using var fixture = await SqliteFixture.StartAsync();
+        await using var connection = fixture.CreateConnection();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA foreign_key_list(\"MealIngredients\");";
+
+        var foreignKeys = new List<ForeignKeyDefinition>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            foreignKeys.Add(new ForeignKeyDefinition(
+                reader.GetString(reader.GetOrdinal("from")),
+                reader.GetString(reader.GetOrdinal("table")),
+                reader.GetString(reader.GetOrdinal("to"))));
+        }
+
+        foreignKeys.Should().ContainEquivalentOf(new ForeignKeyDefinition(
+            "IngredientId",
+            "Ingredients",
+            "Id"));
+    }
+
     private sealed class SqliteFixture : IAsyncDisposable
     {
         private readonly SqliteConnection _connection;
@@ -80,6 +105,11 @@ public class WeeklyPlanPersistenceTests
         public DietPlannerDbContext CreateDbContext()
         {
             return CreateDbContext(_connection);
+        }
+
+        public SqliteConnection CreateConnection()
+        {
+            return _connection;
         }
 
         public async ValueTask DisposeAsync()
@@ -131,4 +161,6 @@ public class WeeklyPlanPersistenceTests
             return shoppingList;
         }
     }
+
+    private sealed record ForeignKeyDefinition(string FromColumn, string TargetTable, string TargetColumn);
 }

@@ -33,8 +33,13 @@ public class DatabaseBootstrapTests
                 await connection.OpenAsync();
 
                 var tableNames = await ReadTableNamesAsync(connection);
+                var mealIngredientForeignKeys = await ReadForeignKeysAsync(connection, "MealIngredients");
 
                 tableNames.Should().Contain(["Meals", "Ingredients", "MealIngredients", "__EFMigrationsHistory"]);
+                mealIngredientForeignKeys.Should().ContainEquivalentOf(new ForeignKeyDefinition(
+                    "IngredientId",
+                    "Ingredients",
+                    "Id"));
             }
         }
         finally
@@ -131,6 +136,28 @@ public class DatabaseBootstrapTests
 
         return names;
     }
+
+    private static async Task<IReadOnlyList<ForeignKeyDefinition>> ReadForeignKeysAsync(
+        SqliteConnection connection,
+        string tableName)
+    {
+        var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA foreign_key_list(\"{tableName}\");";
+
+        var foreignKeys = new List<ForeignKeyDefinition>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            foreignKeys.Add(new ForeignKeyDefinition(
+                reader.GetString(reader.GetOrdinal("from")),
+                reader.GetString(reader.GetOrdinal("table")),
+                reader.GetString(reader.GetOrdinal("to"))));
+        }
+
+        return foreignKeys;
+    }
+
+    private sealed record ForeignKeyDefinition(string FromColumn, string TargetTable, string TargetColumn);
 
     private sealed class BootstrapApiFactory : WebApplicationFactory<Program>, IAsyncDisposable
     {
