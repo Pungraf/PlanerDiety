@@ -4,6 +4,7 @@ using DietPlanner.Application.Auth;
 using DietPlanner.Application.Meals.Queries;
 using DietPlanner.Application.Plans.Commands;
 using DietPlanner.Application.Plans.Queries;
+using DietPlanner.Application.Shopping;
 using DietPlanner.Infrastructure.Auth;
 using DietPlanner.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -20,7 +21,9 @@ builder.Services.AddScoped<GoogleLoginHandler>();
 builder.Services.AddScoped<GetCurrentPlanHandler>();
 builder.Services.AddScoped<ActivateDraftHandler>();
 builder.Services.AddScoped<ReplaceMealHandler>();
+builder.Services.AddScoped<CopyDayHandler>();
 builder.Services.AddScoped<SearchMealsHandler>();
+builder.Services.AddScoped<IShoppingListService, ShoppingListService>();
 builder.Services.AddScoped<IGoogleTokenVerifier, GoogleTokenVerifier>();
 builder.Services.AddScoped<ISessionTokenService, JwtSessionTokenService>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

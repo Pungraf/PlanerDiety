@@ -19,6 +19,12 @@ public interface IApplicationDbContext
 
     Task<Meal?> FindMealByIdAsync(Guid mealId, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<Meal>> FindMealsByIdsAsync(IReadOnlyCollection<Guid> mealIds, CancellationToken cancellationToken);
+
+    Task<ShoppingList?> FindShoppingListByWeeklyPlanIdAsync(Guid weeklyPlanId, CancellationToken cancellationToken);
+
+    Task AddShoppingListAsync(ShoppingList shoppingList, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<Meal>> SearchMealsAsync(string? name, MealType? type, string? ingredient, CancellationToken cancellationToken);
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

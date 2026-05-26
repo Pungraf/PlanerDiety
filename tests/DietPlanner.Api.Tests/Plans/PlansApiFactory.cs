@@ -35,6 +35,15 @@ internal sealed class PlansApiFactory : WebApplicationFactory<Program>, IAsyncDi
         return factory;
     }
 
+    public static async Task<PlansApiFactory> WithActivePlanAsync(Func<Guid, WeeklyPlan> planFactory)
+    {
+        var factory = new PlansApiFactory();
+        await factory._connection.OpenAsync();
+        factory.User = new User(Guid.NewGuid(), "Ada Lovelace", "ada@example.com", "google-sub-123");
+        await factory.SeedPlansAsync([planFactory(factory.User.Id)]);
+        return factory;
+    }
+
     public static async Task<PlansApiFactory> WithPlansAsync(Func<Guid, IEnumerable<WeeklyPlan>> planFactory)
     {
         var factory = new PlansApiFactory();
@@ -75,6 +84,24 @@ internal sealed class PlansApiFactory : WebApplicationFactory<Program>, IAsyncDi
             .Where(plan => plan.UserId == User.Id)
             .OrderBy(plan => plan.StartDate)
             .ToListAsync();
+    }
+
+    public async Task<ShoppingList?> ReadShoppingListAsync()
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<DietPlannerDbContext>();
+        var plan = await dbContext.WeeklyPlans
+            .Where(candidate => candidate.UserId == User.Id)
+            .OrderByDescending(candidate => candidate.Status == WeeklyPlanStatus.Active)
+            .ThenByDescending(candidate => candidate.StartDate)
+            .Select(candidate => candidate.Id)
+            .FirstOrDefaultAsync();
+
+        return plan == Guid.Empty
+            ? null
+            : await dbContext.ShoppingLists
+                .Include(list => list.Items)
+                .SingleOrDefaultAsync(list => list.WeeklyPlanId == plan);
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -137,5 +164,24 @@ internal sealed class PlansApiFactory : WebApplicationFactory<Program>, IAsyncDi
         var plan = CreateDraftPlan(userId, startDate);
         plan.Activate();
         return plan;
+    }
+
+    public static WeeklyPlan CreateActivePlan(Guid userId, DateOnly startDate, Action<WeeklyPlan> configure)
+    {
+        var plan = CreateActivePlan(userId, startDate);
+        configure(plan);
+        return plan;
+    }
+
+    public static void AssignMeal(WeeklyPlan plan, DateOnly date, MealSlotType slotType, Guid mealId)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+
+        var slot = plan.Days
+            .Single(day => day.Date == date)
+            .MealSlots
+            .Single(candidate => candidate.SlotType == slotType);
+
+        slot.ReplaceMeal(mealId);
     }
 }

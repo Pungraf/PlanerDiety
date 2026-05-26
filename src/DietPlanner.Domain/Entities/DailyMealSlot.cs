@@ -21,4 +21,9 @@ public class DailyMealSlot
     {
         MealId = Guard.AgainstEmpty(mealId, nameof(mealId));
     }
+
+    public void AssignMeal(Guid? mealId)
+    {
+        MealId = mealId.HasValue ? Guard.AgainstEmpty(mealId.Value, nameof(mealId)) : null;
+    }
 }

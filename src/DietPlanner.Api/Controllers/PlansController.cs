@@ -17,15 +17,18 @@ public sealed class PlansController : ControllerBase
     private readonly GetCurrentPlanHandler _getCurrentPlanHandler;
     private readonly ActivateDraftHandler _activateDraftHandler;
     private readonly ReplaceMealHandler _replaceMealHandler;
+    private readonly CopyDayHandler _copyDayHandler;
 
     public PlansController(
         GetCurrentPlanHandler getCurrentPlanHandler,
         ActivateDraftHandler activateDraftHandler,
-        ReplaceMealHandler replaceMealHandler)
+        ReplaceMealHandler replaceMealHandler,
+        CopyDayHandler copyDayHandler)
     {
         _getCurrentPlanHandler = getCurrentPlanHandler;
         _activateDraftHandler = activateDraftHandler;
         _replaceMealHandler = replaceMealHandler;
+        _copyDayHandler = copyDayHandler;
     }
 
     [HttpGet("current")]
@@ -94,6 +97,29 @@ public sealed class PlansController : ControllerBase
         return result is null ? NotFound() : Ok(ReplaceMealResponse.From(result));
     }
 
+    [HttpPost("current/copy-day")]
+    public async Task<IActionResult> CopyDay([FromBody] CopyDayRequest request, CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        if (request is null
+            || !DateOnly.TryParseExact(request.SourceDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var sourceDate)
+            || !DateOnly.TryParseExact(request.TargetDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var targetDate))
+        {
+            return BadRequest();
+        }
+
+        var result = await _copyDayHandler.HandleAsync(
+            new CopyDayCommand(userId.Value, sourceDate, targetDate),
+            cancellationToken);
+
+        return result is null ? NotFound() : Ok();
+    }
+
     private Guid? GetCurrentUserId()
     {
         var subject = User.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -104,6 +130,8 @@ public sealed class PlansController : ControllerBase
 }
 
 public sealed record ReplaceMealRequest(Guid MealId);
+
+public sealed record CopyDayRequest(string SourceDate, string TargetDate);
 
 public sealed record ReplaceMealResponse(string Date, string SlotType, Guid MealId)
 {

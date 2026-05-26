@@ -98,6 +98,39 @@ public class DietPlannerDbContext : DbContext, IApplicationDbContext
         return Meals.SingleOrDefaultAsync(meal => meal.Id == mealId, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Meal>> FindMealsByIdsAsync(IReadOnlyCollection<Guid> mealIds, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(mealIds);
+
+        if (mealIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await Meals
+            .Include(meal => meal.Ingredients)
+            .Where(meal => mealIds.Contains(meal.Id))
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<ShoppingList?> FindShoppingListByWeeklyPlanIdAsync(Guid weeklyPlanId, CancellationToken cancellationToken)
+    {
+        if (weeklyPlanId == Guid.Empty)
+        {
+            throw new ArgumentException("Value cannot be empty.", nameof(weeklyPlanId));
+        }
+
+        return ShoppingLists
+            .Include(list => list.Items)
+            .SingleOrDefaultAsync(list => list.WeeklyPlanId == weeklyPlanId, cancellationToken);
+    }
+
+    public Task AddShoppingListAsync(ShoppingList shoppingList, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(shoppingList);
+        return ShoppingLists.AddAsync(shoppingList, cancellationToken).AsTask();
+    }
+
     public async Task<IReadOnlyList<Meal>> SearchMealsAsync(
         string? name,
         MealType? type,

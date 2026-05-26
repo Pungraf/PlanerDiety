@@ -16,6 +16,23 @@ public class DailyPlan
         Date = date;
     }
 
+    public bool OverwriteMealsFrom(DailyPlan sourceDay)
+    {
+        ArgumentNullException.ThrowIfNull(sourceDay);
+
+        var sourceSlots = sourceDay.MealSlots.ToDictionary(slot => slot.SlotType);
+        var updated = false;
+
+        foreach (var slot in _mealSlots)
+        {
+            sourceSlots.TryGetValue(slot.SlotType, out var sourceSlot);
+            slot.AssignMeal(sourceSlot?.MealId);
+            updated = true;
+        }
+
+        return updated;
+    }
+
     internal void AddSlot(DailyMealSlot slot)
     {
         ArgumentNullException.ThrowIfNull(slot);

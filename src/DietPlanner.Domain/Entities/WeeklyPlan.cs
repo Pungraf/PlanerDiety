@@ -47,6 +47,19 @@ public class WeeklyPlan
         Status = WeeklyPlanStatus.Active;
     }
 
+    public bool CopyDay(DateOnly sourceDate, DateOnly targetDate)
+    {
+        var sourceDay = _days.SingleOrDefault(day => day.Date == sourceDate);
+        var targetDay = _days.SingleOrDefault(day => day.Date == targetDate);
+
+        if (sourceDay is null || targetDay is null)
+        {
+            return false;
+        }
+
+        return targetDay.OverwriteMealsFrom(sourceDay);
+    }
+
     internal void AddDay(DailyPlan day)
     {
         ArgumentNullException.ThrowIfNull(day);
