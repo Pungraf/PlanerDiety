@@ -22,15 +22,18 @@ public static class MauiProgram
 #endif
         builder.Services.AddSingleton<IAuthApiClient, AuthApiClient>();
         builder.Services.AddSingleton<IPlansApiClient, PlansApiClient>();
+        builder.Services.AddSingleton<IShoppingListApiClient, ShoppingListApiClient>();
         builder.Services.AddSingleton<ISessionStore, InMemorySessionStore>();
         builder.Services.AddSingleton<IMealSearchContextStore, InMemoryMealSearchContextStore>();
         builder.Services.AddSingleton<IAppNavigator, ShellNavigator>();
         builder.Services.AddTransient<LoginViewModel>();
         builder.Services.AddTransient<HomeViewModel>();
         builder.Services.AddTransient<MealSearchViewModel>();
+        builder.Services.AddTransient<ShoppingListViewModel>();
         builder.Services.AddTransient<Views.LoginPage>();
         builder.Services.AddTransient<Views.HomePage>();
         builder.Services.AddTransient<Views.MealSearchPage>();
+        builder.Services.AddTransient<Views.ShoppingListPage>();
         builder.Services.AddSingleton<AppShell>();
 
         return builder.Build();

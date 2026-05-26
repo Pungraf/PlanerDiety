@@ -11,5 +11,9 @@
         <ShellContent
             x:Name="HomeShellContent"
             Title="Home" />
+        <ShellContent
+            x:Name="ShoppingListShellContent"
+            Route="shopping-list"
+            Title="Shopping list" />
     </FlyoutItem>
 </Shell>

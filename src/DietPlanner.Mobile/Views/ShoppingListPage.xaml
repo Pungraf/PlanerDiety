@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="DietPlanner.Mobile.Views.ShoppingListPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Shopping list">
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="16">
+            <Label FontAttributes="Bold" FontSize="28" Text="Shopping list" />
+            <Label Text="Check off ingredients as you shop. Checked items move to the bottom." />
+
+            <CollectionView ItemsSource="{Binding SummaryItems}" SelectionMode="None">
+                <CollectionView.EmptyView>
+                    <Label HorizontalTextAlignment="Center" Text="No items to shop for yet." />
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Padding="16" StrokeThickness="0">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                <VerticalStackLayout Spacing="2">
+                                    <Label FontAttributes="Bold" Text="{Binding Name}" />
+                                    <Label Text="{Binding QuantityText}" />
+                                </VerticalStackLayout>
+                                <Button
+                                    Grid.Column="1"
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleItemCommand}"
+                                    CommandParameter="{Binding .}"
+                                    Text="{Binding ActionLabel}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Label TextColor="IndianRed" Text="{Binding ErrorMessage}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

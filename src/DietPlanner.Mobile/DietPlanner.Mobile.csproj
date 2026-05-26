@@ -26,10 +26,12 @@
     <Compile Remove="Views\HomePage.xaml.cs" />
     <Compile Remove="Views\LoginPage.xaml.cs" />
     <Compile Remove="Views\MealSearchPage.xaml.cs" />
+    <Compile Remove="Views\ShoppingListPage.xaml.cs" />
     <MauiXaml Remove="App.xaml" />
     <MauiXaml Remove="AppShell.xaml" />
     <MauiXaml Remove="Views\HomePage.xaml" />
     <MauiXaml Remove="Views\LoginPage.xaml" />
     <MauiXaml Remove="Views\MealSearchPage.xaml" />
+    <MauiXaml Remove="Views\ShoppingListPage.xaml" />
   </ItemGroup>
 </Project>
