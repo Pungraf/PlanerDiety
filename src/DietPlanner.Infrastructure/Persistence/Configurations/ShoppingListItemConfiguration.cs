@@ -15,6 +15,7 @@ public class ShoppingListItemConfiguration : IEntityTypeConfiguration<ShoppingLi
         builder.Property(x => x.IngredientId).IsRequired();
         builder.Property(x => x.Quantity).HasPrecision(18, 2).IsRequired();
         builder.Property(x => x.Unit).HasMaxLength(64).IsRequired();
+        builder.Property(x => x.IsChecked).IsRequired();
         builder.Property<Guid>("ShoppingListId").IsRequired();
     }
 }

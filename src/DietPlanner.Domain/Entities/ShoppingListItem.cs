@@ -10,11 +10,19 @@ public class ShoppingListItem
 
     public string Unit { get; private set; }
 
-    public ShoppingListItem(Guid id, Guid ingredientId, decimal quantity, string unit)
+    public bool IsChecked { get; private set; }
+
+    public ShoppingListItem(Guid id, Guid ingredientId, decimal quantity, string unit, bool isChecked = false)
     {
         Id = Guard.AgainstEmpty(id, nameof(id));
         IngredientId = Guard.AgainstEmpty(ingredientId, nameof(ingredientId));
         Quantity = Guard.AgainstNonPositive(quantity, nameof(quantity));
         Unit = Guard.AgainstBlank(unit, nameof(unit));
+        IsChecked = isChecked;
+    }
+
+    public void ToggleChecked()
+    {
+        IsChecked = !IsChecked;
     }
 }

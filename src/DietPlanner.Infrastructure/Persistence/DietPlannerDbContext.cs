@@ -113,6 +113,20 @@ public class DietPlannerDbContext : DbContext, IApplicationDbContext
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Ingredient>> FindIngredientsByIdsAsync(IReadOnlyCollection<Guid> ingredientIds, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(ingredientIds);
+
+        if (ingredientIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await Ingredients
+            .Where(ingredient => ingredientIds.Contains(ingredient.Id))
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<ShoppingList?> FindShoppingListByWeeklyPlanIdAsync(Guid weeklyPlanId, CancellationToken cancellationToken)
     {
         if (weeklyPlanId == Guid.Empty)

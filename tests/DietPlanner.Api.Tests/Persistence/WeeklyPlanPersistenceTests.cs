@@ -55,6 +55,8 @@ public class WeeklyPlanPersistenceTests
         saved.WeeklyPlanId.Should().Be(weeklyPlan.Id);
         saved.Items.Should().HaveCount(2);
         saved.Items.Select(x => x.Unit).Should().BeEquivalentTo(["g", "ml"]);
+        saved.Items.Should().Contain(item => !item.IsChecked);
+        saved.Items.Should().Contain(item => item.IsChecked);
     }
 
     [Fact]
@@ -156,7 +158,7 @@ public class WeeklyPlanPersistenceTests
             var items = (List<ShoppingListItem>)itemsField.GetValue(shoppingList)!;
 
             items.Add(new ShoppingListItem(Guid.NewGuid(), Guid.NewGuid(), 200m, "g"));
-            items.Add(new ShoppingListItem(Guid.NewGuid(), Guid.NewGuid(), 500m, "ml"));
+            items.Add(new ShoppingListItem(Guid.NewGuid(), Guid.NewGuid(), 500m, "ml", true));
 
             return shoppingList;
         }

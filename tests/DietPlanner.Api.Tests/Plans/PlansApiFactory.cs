@@ -54,6 +54,25 @@ internal sealed class PlansApiFactory : WebApplicationFactory<Program>, IAsyncDi
         return factory;
     }
 
+    public static async Task<PlansApiFactory> WithShoppingListAsync()
+    {
+        var factory = new PlansApiFactory();
+        await factory._connection.OpenAsync();
+        factory.User = new User(Guid.NewGuid(), "Ada Lovelace", "ada@example.com", "google-sub-123");
+
+        var plan = CreateActivePlan(factory.User.Id, new DateOnly(2026, 5, 25));
+        var shoppingList = new ShoppingList(Guid.NewGuid(), plan.Id);
+        shoppingList.ReplaceItems(
+        [
+            new ShoppingListItem(TestData.OatsShoppingListItemId, TestData.OatsIngredientId, 80m, "g"),
+            new ShoppingListItem(TestData.ChickenShoppingListItemId, TestData.ChickenIngredientId, 140m, "g"),
+            new ShoppingListItem(TestData.TomatoShoppingListItemId, TestData.TomatoIngredientId, 120m, "g")
+        ]);
+
+        await factory.SeedPlansAsync([plan], shoppingList);
+        return factory;
+    }
+
     public async Task<HttpClient> CreateAuthenticatedClientAsync()
     {
         var client = CreateClient();
@@ -131,7 +150,7 @@ internal sealed class PlansApiFactory : WebApplicationFactory<Program>, IAsyncDi
         await _connection.DisposeAsync();
     }
 
-    private async Task SeedPlansAsync(IEnumerable<WeeklyPlan> plans)
+    private async Task SeedPlansAsync(IEnumerable<WeeklyPlan> plans, ShoppingList? shoppingList = null)
     {
         await using var scope = Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<DietPlannerDbContext>();
@@ -139,6 +158,12 @@ internal sealed class PlansApiFactory : WebApplicationFactory<Program>, IAsyncDi
         await dbContext.Ingredients.AddRangeAsync(TestData.CreateIngredients());
         await dbContext.Meals.AddRangeAsync(TestData.CreateMeals());
         await dbContext.WeeklyPlans.AddRangeAsync(plans);
+
+        if (shoppingList is not null)
+        {
+            await dbContext.ShoppingLists.AddAsync(shoppingList);
+        }
+
         await dbContext.SaveChangesAsync();
     }
 
