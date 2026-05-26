@@ -27,6 +27,14 @@ public sealed class ActivateDraftHandler
         plan.Activate();
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return CurrentPlanDto.From(plan);
+        var mealIds = plan.Days
+            .SelectMany(day => day.MealSlots)
+            .Where(slot => slot.MealId.HasValue)
+            .Select(slot => slot.MealId!.Value)
+            .Distinct()
+            .ToArray();
+        var meals = await _dbContext.FindMealsByIdsAsync(mealIds, cancellationToken);
+
+        return CurrentPlanDto.From(plan, meals);
     }
 }

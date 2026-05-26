@@ -1,0 +1,105 @@
+using DietPlanner.Mobile.Navigation;
+using DietPlanner.Mobile.Services;
+using DietPlanner.Mobile.ViewModels;
+using Xunit;
+
+namespace DietPlanner.Mobile.Tests;
+
+public sealed class MealSearchViewModelTests
+{
+    [Fact]
+    public async Task LoadAsync_ShouldLoadMealsAndApplySearchFilter()
+    {
+        var plansClient = new FakePlansApiClient(
+            [
+                new MealSummaryDto(Guid.NewGuid(), "Chicken Rice", "lunch", 700, 45),
+                new MealSummaryDto(Guid.NewGuid(), "Oats Bowl", "breakfast", 500, 30),
+                new MealSummaryDto(Guid.NewGuid(), "Salmon Potatoes", "dinner", 600, 35)
+            ]);
+        var viewModel = new MealSearchViewModel(
+            plansClient,
+            new InMemoryMealSearchContextStore
+            {
+                Current = new MealSearchContext(new DateOnly(2026, 5, 26), "breakfast", "Oats Bowl")
+            },
+            new RecordingNavigator());
+
+        await viewModel.LoadAsync();
+        viewModel.SearchText = "sal";
+
+        var result = Assert.Single(viewModel.Meals);
+        Assert.Equal("Salmon Potatoes", result.Name);
+    }
+
+    [Fact]
+    public async Task ReplaceMealCommand_ShouldReplaceSelectedMealAndNavigateHome()
+    {
+        var selectedMeal = new MealSummaryDto(Guid.NewGuid(), "Chicken Rice", "lunch", 700, 45);
+        var plansClient = new FakePlansApiClient([selectedMeal]);
+        var navigator = new RecordingNavigator();
+        var contextStore = new InMemoryMealSearchContextStore
+        {
+            Current = new MealSearchContext(new DateOnly(2026, 5, 26), "breakfast", "Oats Bowl")
+        };
+        var viewModel = new MealSearchViewModel(plansClient, contextStore, navigator);
+
+        await viewModel.LoadAsync();
+        await viewModel.ReplaceMealCommand.ExecuteAsync(viewModel.Meals.Single());
+
+        Assert.Equal(new DateOnly(2026, 5, 26), plansClient.LastReplaceDate);
+        Assert.Equal("breakfast", plansClient.LastReplaceSlotType);
+        Assert.Equal(selectedMeal.Id, plansClient.LastReplaceMealId);
+        Assert.Equal("//home", navigator.LastRoute);
+        Assert.Null(contextStore.Current);
+    }
+
+    private sealed class FakePlansApiClient : IPlansApiClient
+    {
+        private readonly IReadOnlyList<MealSummaryDto> _meals;
+
+        public FakePlansApiClient(IReadOnlyList<MealSummaryDto> meals)
+        {
+            _meals = meals;
+        }
+
+        public DateOnly? LastReplaceDate { get; private set; }
+
+        public string? LastReplaceSlotType { get; private set; }
+
+        public Guid? LastReplaceMealId { get; private set; }
+
+        public Task CopyDayAsync(DateOnly sourceDate, DateOnly targetDate, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<CurrentPlanDto> GetCurrentPlanAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<IReadOnlyList<MealSummaryDto>> SearchMealsAsync(string? query, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_meals);
+        }
+
+        public Task ReplaceMealAsync(DateOnly date, string slotType, Guid mealId, CancellationToken cancellationToken = default)
+        {
+            LastReplaceDate = date;
+            LastReplaceSlotType = slotType;
+            LastReplaceMealId = mealId;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class RecordingNavigator : IAppNavigator
+    {
+        public string? LastRoute { get; private set; }
+
+        public Task GoToAsync(string route)
+        {
+            LastRoute = route;
+            return Task.CompletedTask;
+        }
+    }
+}

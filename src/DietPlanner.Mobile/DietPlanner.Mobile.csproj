@@ -25,9 +25,11 @@
     <Compile Remove="Platforms\Android\**\*.cs" />
     <Compile Remove="Views\HomePage.xaml.cs" />
     <Compile Remove="Views\LoginPage.xaml.cs" />
+    <Compile Remove="Views\MealSearchPage.xaml.cs" />
     <MauiXaml Remove="App.xaml" />
     <MauiXaml Remove="AppShell.xaml" />
     <MauiXaml Remove="Views\HomePage.xaml" />
     <MauiXaml Remove="Views\LoginPage.xaml" />
+    <MauiXaml Remove="Views\MealSearchPage.xaml" />
   </ItemGroup>
 </Project>

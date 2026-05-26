@@ -21,11 +21,16 @@ public static class MauiProgram
         builder.Services.AddSingleton<IGoogleIdTokenProvider, UnsupportedGoogleIdTokenProvider>();
 #endif
         builder.Services.AddSingleton<IAuthApiClient, AuthApiClient>();
+        builder.Services.AddSingleton<IPlansApiClient, PlansApiClient>();
         builder.Services.AddSingleton<ISessionStore, InMemorySessionStore>();
+        builder.Services.AddSingleton<IMealSearchContextStore, InMemoryMealSearchContextStore>();
         builder.Services.AddSingleton<IAppNavigator, ShellNavigator>();
         builder.Services.AddTransient<LoginViewModel>();
+        builder.Services.AddTransient<HomeViewModel>();
+        builder.Services.AddTransient<MealSearchViewModel>();
         builder.Services.AddTransient<Views.LoginPage>();
         builder.Services.AddTransient<Views.HomePage>();
+        builder.Services.AddTransient<Views.MealSearchPage>();
         builder.Services.AddSingleton<AppShell>();
 
         return builder.Build();

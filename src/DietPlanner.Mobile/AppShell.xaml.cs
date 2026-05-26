@@ -9,5 +9,6 @@ public partial class AppShell : Shell
         InitializeComponent();
         LoginShellContent.Content = loginPage;
         HomeShellContent.Content = homePage;
+        Routing.RegisterRoute("meal-search", typeof(MealSearchPage));
     }
 }

@@ -6,8 +6,65 @@
     Title="Home">
     <ScrollView>
         <VerticalStackLayout Padding="24" Spacing="16">
-            <Label FontAttributes="Bold" FontSize="28" Text="Diet Planner" />
-            <Label Text="Your weekly plan and shopping flow will appear here after sign-in." />
+            <Label FontAttributes="Bold" FontSize="28" Text="Today's plan" />
+
+            <Picker
+                Title="Select day"
+                ItemDisplayBinding="{Binding DisplayDate}"
+                ItemsSource="{Binding Days}"
+                SelectedItem="{Binding SelectedDay}" />
+
+            <Border Padding="16" StrokeThickness="0">
+                <VerticalStackLayout Spacing="6">
+                    <Label FontAttributes="Bold" FontSize="18" Text="Daily totals" />
+                    <Label Text="{Binding SelectedDay.TotalKcal, StringFormat='Calories: {0} kcal'}" />
+                    <Label Text="{Binding SelectedDay.TotalProtein, StringFormat='Protein: {0} g'}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <VerticalStackLayout Spacing="10">
+                <Label FontAttributes="Bold" FontSize="18" Text="Meals" />
+                <CollectionView ItemsSource="{Binding SelectedDay.Meals}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Padding="16" StrokeThickness="0">
+                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                                    <Label FontAttributes="Bold" Text="{Binding SlotLabel}" />
+                                    <Label Grid.Row="1" Text="{Binding Name}" />
+                                    <Label
+                                        Grid.Row="2"
+                                        Text="{Binding Kcal, StringFormat='{}{0} kcal'}" />
+                                    <Button
+                                        Grid.Column="1"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenMealSearchCommand}"
+                                        CommandParameter="{Binding .}"
+                                        Text="Replace" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+
+            <VerticalStackLayout Spacing="10">
+                <Label FontAttributes="Bold" FontSize="18" Text="Copy selected day to" />
+                <CollectionView ItemsSource="{Binding Days}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="*,Auto" Padding="0,4">
+                                <Label Text="{Binding DisplayDate}" VerticalOptions="Center" />
+                                <Button
+                                    Grid.Column="1"
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.CopyDayCommand}"
+                                    CommandParameter="{Binding .}"
+                                    Text="Copy here" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+
+            <Label TextColor="IndianRed" Text="{Binding ErrorMessage}" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

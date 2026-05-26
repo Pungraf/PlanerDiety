@@ -142,11 +142,36 @@ public sealed record ReplaceMealResponse(string Date, string SlotType, Guid Meal
     }
 }
 
-public sealed record CurrentPlanResponse(Guid Id, string Status, string StartDate, string DinnerMode)
+public sealed record CurrentPlanResponse(Guid Id, string Status, string StartDate, string DinnerMode, IReadOnlyList<CurrentPlanDayResponse> Days)
 {
     public static CurrentPlanResponse From(CurrentPlanDto plan)
     {
         ArgumentNullException.ThrowIfNull(plan);
-        return new CurrentPlanResponse(plan.Id, plan.Status, plan.StartDate.ToString("yyyy-MM-dd"), plan.DinnerMode);
+        return new CurrentPlanResponse(
+            plan.Id,
+            plan.Status,
+            plan.StartDate.ToString("yyyy-MM-dd"),
+            plan.DinnerMode,
+            plan.Days.Select(CurrentPlanDayResponse.From).ToArray());
+    }
+}
+
+public sealed record CurrentPlanDayResponse(string Date, IReadOnlyList<CurrentPlanMealSlotResponse> Meals)
+{
+    public static CurrentPlanDayResponse From(CurrentPlanDayDto day)
+    {
+        ArgumentNullException.ThrowIfNull(day);
+        return new CurrentPlanDayResponse(
+            day.Date.ToString("yyyy-MM-dd"),
+            day.Meals.Select(CurrentPlanMealSlotResponse.From).ToArray());
+    }
+}
+
+public sealed record CurrentPlanMealSlotResponse(string SlotType, Guid? MealId, string Name, int Kcal, int Protein)
+{
+    public static CurrentPlanMealSlotResponse From(CurrentPlanMealSlotDto slot)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+        return new CurrentPlanMealSlotResponse(slot.SlotType, slot.MealId, slot.Name, slot.Kcal, slot.Protein);
     }
 }

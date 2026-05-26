@@ -2,11 +2,11 @@ using DietPlanner.Mobile.ViewModels;
 
 namespace DietPlanner.Mobile.Views;
 
-public partial class HomePage : ContentPage
+public partial class MealSearchPage : ContentPage
 {
-    private readonly HomeViewModel _viewModel;
+    private readonly MealSearchViewModel _viewModel;
 
-    public HomePage(HomeViewModel viewModel)
+    public MealSearchPage(MealSearchViewModel viewModel)
     {
         InitializeComponent();
         BindingContext = _viewModel = viewModel;
