@@ -4,9 +4,9 @@ namespace DietPlanner.Mobile.Views;
 
 public partial class LoginPage : ContentPage
 {
-    public LoginPage()
+    public LoginPage(LoginViewModel viewModel)
     {
         InitializeComponent();
-        BindingContext = IPlatformApplication.Current?.Services.GetService<LoginViewModel>();
+        BindingContext = viewModel;
     }
 }

@@ -1,4 +1,6 @@
-using System.Reflection;
+using DietPlanner.Mobile.Navigation;
+using DietPlanner.Mobile.Services;
+using DietPlanner.Mobile.ViewModels;
 using Xunit;
 
 namespace DietPlanner.Mobile.Tests;
@@ -8,124 +10,87 @@ public sealed class LoginViewModelTests
     [Fact]
     public async Task LoginCommand_ShouldStoreSessionAndNavigateToHome()
     {
-        var assembly = Assembly.Load("DietPlanner.Mobile");
-        var loginViewModelType = assembly.GetType("DietPlanner.Mobile.ViewModels.LoginViewModel");
+        var authClient = new FakeAuthApiClient(new AuthSession("mobile-token"));
+        var sessionStore = new RecordingSessionStore();
+        var navigator = new RecordingNavigator();
+        var viewModel = new LoginViewModel(authClient, sessionStore, navigator);
 
-        Assert.NotNull(loginViewModelType);
+        await viewModel.LoginWithGoogleCommand.ExecuteAsync(null);
 
-        var authApiClientType = assembly.GetType("DietPlanner.Mobile.Services.IAuthApiClient");
-        var sessionStoreType = assembly.GetType("DietPlanner.Mobile.Services.ISessionStore");
-        var navigatorType = assembly.GetType("DietPlanner.Mobile.Navigation.IAppNavigator");
-
-        Assert.NotNull(authApiClientType);
-        Assert.NotNull(sessionStoreType);
-        Assert.NotNull(navigatorType);
-
-        var authHandler = new AuthApiClientHandler();
-        var sessionHandler = new SessionStoreHandler();
-        var navigatorHandler = new NavigatorHandler();
-
-        var authClient = TestProxy.Create(authApiClientType!, authHandler);
-        var sessionStore = TestProxy.Create(sessionStoreType!, sessionHandler);
-        var navigator = TestProxy.Create(navigatorType!, navigatorHandler);
-
-        var viewModel = Activator.CreateInstance(loginViewModelType!, authClient, sessionStore, navigator);
-        Assert.NotNull(viewModel);
-
-        var command = loginViewModelType!.GetProperty("LoginWithGoogleCommand", BindingFlags.Instance | BindingFlags.Public)
-            ?.GetValue(viewModel);
-
-        Assert.NotNull(command);
-
-        var executeAsync = command!.GetType().GetMethod("ExecuteAsync", new[] { typeof(object) });
-        Assert.NotNull(executeAsync);
-
-        await (Task)executeAsync!.Invoke(command, new object?[] { null })!;
-
-        Assert.Equal("mobile-token", sessionHandler.StoredAccessToken);
-        Assert.Equal("//home", navigatorHandler.LastRoute);
+        Assert.Equal("mobile-token", sessionStore.StoredAccessToken);
+        Assert.Equal("//home", navigator.LastRoute);
+        Assert.Null(viewModel.ErrorMessage);
     }
 
-    private sealed class AuthApiClientHandler : DispatchProxyHandler
+    [Fact]
+    public async Task LoginCommand_ShouldNotifyErrorMessageAndAvoidNavigation_WhenLoginFails()
     {
-        public override object? Invoke(MethodInfo targetMethod, object?[]? args)
+        var authClient = new ThrowingAuthApiClient(new InvalidOperationException("Google sign-in failed."));
+        var sessionStore = new RecordingSessionStore();
+        var navigator = new RecordingNavigator();
+        var viewModel = new LoginViewModel(authClient, sessionStore, navigator);
+        var changedProperties = new List<string?>();
+
+        viewModel.PropertyChanged += (_, args) => changedProperties.Add(args.PropertyName);
+
+        await viewModel.LoginWithGoogleCommand.ExecuteAsync(null);
+
+        Assert.Equal("Google sign-in failed.", viewModel.ErrorMessage);
+        Assert.Contains(nameof(LoginViewModel.ErrorMessage), changedProperties);
+        Assert.Null(sessionStore.StoredAccessToken);
+        Assert.Null(navigator.LastRoute);
+    }
+
+    private sealed class FakeAuthApiClient : IAuthApiClient
+    {
+        private readonly AuthSession _session;
+
+        public FakeAuthApiClient(AuthSession session)
         {
-            if (targetMethod.Name != "LoginWithGoogleAsync")
-            {
-                throw new NotSupportedException($"Unexpected auth client call: {targetMethod.Name}");
-            }
+            _session = session;
+        }
 
-            var resultType = targetMethod.ReturnType.GenericTypeArguments.Single();
-            var session = Activator.CreateInstance(resultType, "mobile-token");
-            var fromResult = typeof(Task)
-                .GetMethods(BindingFlags.Public | BindingFlags.Static)
-                .Single(method => method.Name == nameof(Task.FromResult));
-
-            return fromResult.MakeGenericMethod(resultType).Invoke(null, new[] { session });
+        public Task<AuthSession> LoginWithGoogleAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_session);
         }
     }
 
-    private sealed class SessionStoreHandler : DispatchProxyHandler
+    private sealed class ThrowingAuthApiClient : IAuthApiClient
     {
-        public string? StoredAccessToken { get; private set; }
+        private readonly Exception _exception;
 
-        public override object? Invoke(MethodInfo targetMethod, object?[]? args)
+        public ThrowingAuthApiClient(Exception exception)
         {
-            if (targetMethod.Name != "SetSession")
-            {
-                throw new NotSupportedException($"Unexpected session store call: {targetMethod.Name}");
-            }
+            _exception = exception;
+        }
 
-            var session = args![0];
-            StoredAccessToken = (string?)session?.GetType().GetProperty("AccessToken")?.GetValue(session);
-            return null;
+        public Task<AuthSession> LoginWithGoogleAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromException<AuthSession>(_exception);
         }
     }
 
-    private sealed class NavigatorHandler : DispatchProxyHandler
+    private sealed class RecordingSessionStore : ISessionStore
+    {
+        public AuthSession? CurrentSession { get; private set; }
+
+        public string? StoredAccessToken => CurrentSession?.AccessToken;
+
+        public void SetSession(AuthSession session)
+        {
+            CurrentSession = session;
+        }
+    }
+
+    private sealed class RecordingNavigator : IAppNavigator
     {
         public string? LastRoute { get; private set; }
 
-        public override object? Invoke(MethodInfo targetMethod, object?[]? args)
+        public Task GoToAsync(string route)
         {
-            if (targetMethod.Name != "GoToAsync")
-            {
-                throw new NotSupportedException($"Unexpected navigation call: {targetMethod.Name}");
-            }
-
-            LastRoute = (string?)args![0];
+            LastRoute = route;
             return Task.CompletedTask;
-        }
-    }
-
-    private abstract class DispatchProxyHandler
-    {
-        public abstract object? Invoke(MethodInfo targetMethod, object?[]? args);
-    }
-
-    private class TestProxy : DispatchProxy
-    {
-        private DispatchProxyHandler? _handler;
-
-        public static object Create(Type interfaceType, DispatchProxyHandler handler)
-        {
-            var createMethod = typeof(DispatchProxy)
-                .GetMethods(BindingFlags.Public | BindingFlags.Static)
-                .Single(method => method.Name == nameof(Create) && method.IsGenericMethodDefinition);
-
-            var proxy = createMethod.MakeGenericMethod(interfaceType, typeof(TestProxy)).Invoke(null, null)!;
-            ((TestProxy)proxy)._handler = handler;
-            return proxy;
-        }
-
-        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
-        {
-            if (targetMethod is null || _handler is null)
-            {
-                throw new InvalidOperationException("Proxy invocation was not initialized correctly.");
-            }
-
-            return _handler.Invoke(targetMethod, args);
         }
     }
 }

@@ -1,14 +1,17 @@
 using DietPlanner.Mobile.Commands;
 using DietPlanner.Mobile.Navigation;
 using DietPlanner.Mobile.Services;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace DietPlanner.Mobile.ViewModels;
 
-public sealed class LoginViewModel
+public sealed class LoginViewModel : INotifyPropertyChanged
 {
     private readonly IAuthApiClient _authApiClient;
     private readonly ISessionStore _sessionStore;
     private readonly IAppNavigator _navigator;
+    private string? _errorMessage;
 
     public LoginViewModel(IAuthApiClient authApiClient, ISessionStore sessionStore, IAppNavigator navigator)
     {
@@ -18,9 +21,24 @@ public sealed class LoginViewModel
         LoginWithGoogleCommand = new AsyncCommand(_ => LoginAsync());
     }
 
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     public AsyncCommand LoginWithGoogleCommand { get; }
 
-    public string? ErrorMessage { get; private set; }
+    public string? ErrorMessage
+    {
+        get => _errorMessage;
+        private set
+        {
+            if (_errorMessage == value)
+            {
+                return;
+            }
+
+            _errorMessage = value;
+            OnPropertyChanged();
+        }
+    }
 
     private async Task LoginAsync()
     {
@@ -36,5 +54,10 @@ public sealed class LoginViewModel
         {
             ErrorMessage = exception.Message;
         }
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
