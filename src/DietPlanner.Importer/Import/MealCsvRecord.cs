@@ -1,8 +1,10 @@
+using DietPlanner.Domain.Enums;
+
 namespace DietPlanner.Importer.Import;
 
 public sealed record MealCsvRecord(
     string Name,
-    string Type,
+    MealType Type,
     bool IsDessert,
     int Kcal,
     int Protein,
