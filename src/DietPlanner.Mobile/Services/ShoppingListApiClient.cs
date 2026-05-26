@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Net;
 
 namespace DietPlanner.Mobile.Services;
 
@@ -25,6 +26,11 @@ public sealed class ShoppingListApiClient : IShoppingListApiClient
     {
         using var request = CreateRequest(HttpMethod.Get, "api/shopping-lists/current");
         using var response = await _httpClient.SendAsync(request, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return new ShoppingListDto(Guid.Empty, []);
+        }
+
         response.EnsureSuccessStatusCode();
 
         return await response.Content.ReadFromJsonAsync<ShoppingListDto>(cancellationToken: cancellationToken)

@@ -11,6 +11,7 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
 {
     private readonly IShoppingListApiClient _shoppingListApiClient;
     private string? _errorMessage;
+    private int _requestVersion;
 
     public ShoppingListViewModel(IShoppingListApiClient shoppingListApiClient)
     {
@@ -44,16 +45,23 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
 
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
+        var requestVersion = Interlocked.Increment(ref _requestVersion);
         ErrorMessage = null;
 
         try
         {
             var shoppingList = await _shoppingListApiClient.GetCurrentAsync(cancellationToken);
-            ApplyShoppingList(shoppingList);
+            if (requestVersion == _requestVersion)
+            {
+                ApplyShoppingList(shoppingList);
+            }
         }
         catch (Exception exception)
         {
-            ErrorMessage = exception.Message;
+            if (requestVersion == _requestVersion)
+            {
+                ErrorMessage = exception.Message;
+            }
         }
     }
 
@@ -64,16 +72,23 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
             return;
         }
 
+        var requestVersion = Interlocked.Increment(ref _requestVersion);
         ErrorMessage = null;
 
         try
         {
             var shoppingList = await _shoppingListApiClient.ToggleItemAsync(item.Id, cancellationToken);
-            ApplyShoppingList(shoppingList);
+            if (requestVersion == _requestVersion)
+            {
+                ApplyShoppingList(shoppingList);
+            }
         }
         catch (Exception exception)
         {
-            ErrorMessage = exception.Message;
+            if (requestVersion == _requestVersion)
+            {
+                ErrorMessage = exception.Message;
+            }
         }
     }
 
