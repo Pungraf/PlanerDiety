@@ -21,9 +21,19 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        var connectionString = configuration.GetConnectionString("DietPlanner") ?? "Data Source=dietplanner.db";
+
         services.AddControllers();
         services.AddDbContext<DietPlannerDbContext>(options =>
-            options.UseSqlite(configuration.GetConnectionString("DietPlanner") ?? "Data Source=dietplanner.db"));
+        {
+            if (LooksLikePostgresConnectionString(connectionString))
+            {
+                options.UseNpgsql(connectionString);
+                return;
+            }
+
+            options.UseSqlite(connectionString);
+        });
 
         services.AddScoped<IApplicationDbContext>(serviceProvider =>
             serviceProvider.GetRequiredService<DietPlannerDbContext>());
@@ -66,4 +76,9 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    private static bool LooksLikePostgresConnectionString(string connectionString)
+        => connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase)
+           || connectionString.Contains("Username=", StringComparison.OrdinalIgnoreCase)
+           || connectionString.Contains("Port=", StringComparison.OrdinalIgnoreCase);
 }
