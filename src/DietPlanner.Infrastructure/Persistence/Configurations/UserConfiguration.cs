@@ -12,7 +12,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.Name).IsRequired();
         builder.Property(x => x.Email);
         builder.Property(x => x.GoogleSubject);
-        builder.HasIndex(x => x.Email).IsUnique().HasFilter("[Email] IS NOT NULL");
-        builder.HasIndex(x => x.GoogleSubject).IsUnique().HasFilter("[GoogleSubject] IS NOT NULL");
+        builder.HasIndex(x => x.Email).IsUnique();
+        builder.HasIndex(x => x.GoogleSubject).IsUnique();
     }
 }

@@ -30,4 +30,19 @@ public class PostgresConfigurationTests
 
         dbContext.Database.ProviderName.Should().Be("Npgsql.EntityFrameworkCore.PostgreSQL");
     }
+
+    [Fact]
+    public void PostgresSchemaScript_ShouldNotContainSqlServerStyleFilteredIndexSyntax()
+    {
+        var options = new DbContextOptionsBuilder<DietPlannerDbContext>()
+            .UseNpgsql("Host=localhost;Port=5432;Database=dietplanner;Username=postgres;Password=postgres")
+            .Options;
+
+        using var dbContext = new DietPlannerDbContext(options);
+
+        var script = dbContext.Database.GenerateCreateScript();
+
+        script.Should().NotContain("[Email]");
+        script.Should().NotContain("[GoogleSubject]");
+    }
 }
