@@ -12,18 +12,25 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
 {
     private readonly IShoppingListApiClient _shoppingListApiClient;
     private readonly IAppNavigator _navigator;
+    private readonly IUserPromptService _promptService;
     private string? _errorMessage;
     private int _requestVersion;
     private bool _isLoading;
     private ShoppingListSummaryViewModel? _selectedList;
 
-    public ShoppingListViewModel(IShoppingListApiClient shoppingListApiClient, IAppNavigator navigator)
+    public ShoppingListViewModel(
+        IShoppingListApiClient shoppingListApiClient,
+        IAppNavigator navigator,
+        IUserPromptService promptService)
     {
         _shoppingListApiClient = shoppingListApiClient;
         _navigator = navigator;
+        _promptService = promptService;
         LoadCommand = new AsyncCommand(_ => LoadAsync());
         ToggleItemCommand = new AsyncCommand(item => ToggleItemAsync(item as ShoppingListSummaryItemViewModel));
         SelectListCommand = new AsyncCommand(item => SelectListAsync(item as ShoppingListSummaryViewModel));
+        DeleteListCommand = new AsyncCommand(item => DeleteListAsync(item as ShoppingListSummaryViewModel));
+        DeleteSelectedListCommand = new AsyncCommand(_ => DeleteSelectedListAsync());
         OpenCreateCommand = new AsyncCommand(_ => _navigator.GoToAsync("shopping-list-create"));
     }
 
@@ -38,6 +45,10 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
     public AsyncCommand ToggleItemCommand { get; }
 
     public AsyncCommand SelectListCommand { get; }
+
+    public AsyncCommand DeleteListCommand { get; }
+
+    public AsyncCommand DeleteSelectedListCommand { get; }
 
     public AsyncCommand OpenCreateCommand { get; }
 
@@ -199,6 +210,42 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
         }
     }
 
+    public async Task DeleteListAsync(ShoppingListSummaryViewModel? list, CancellationToken cancellationToken = default)
+    {
+        if (list is null)
+        {
+            return;
+        }
+
+        var confirmed = await ConfirmDeleteAsync();
+        if (!confirmed)
+        {
+            return;
+        }
+
+        ErrorMessage = null;
+
+        try
+        {
+            await _shoppingListApiClient.DeleteAsync(list.Id, cancellationToken);
+            await LoadAsync(cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            ErrorMessage = exception.Message;
+        }
+    }
+
+    public Task DeleteSelectedListAsync(CancellationToken cancellationToken = default)
+    {
+        if (SelectedList is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        return DeleteSelectedListAsync(SelectedList, cancellationToken);
+    }
+
     private void ApplyLists(IReadOnlyList<ShoppingListSummaryDto> shoppingLists)
     {
         Lists.Clear();
@@ -230,6 +277,42 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
             Items.Add(item);
         }
 
+        OnPropertyChanged(nameof(ShowEmptyState));
+    }
+
+    private async Task DeleteSelectedListAsync(ShoppingListSummaryViewModel list, CancellationToken cancellationToken)
+    {
+        var confirmed = await ConfirmDeleteAsync();
+        if (!confirmed)
+        {
+            return;
+        }
+
+        ErrorMessage = null;
+
+        try
+        {
+            await _shoppingListApiClient.DeleteAsync(list.Id, cancellationToken);
+            ClearSelection();
+            await LoadAsync(cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            ErrorMessage = exception.Message;
+        }
+    }
+
+    private Task<bool> ConfirmDeleteAsync()
+        => _promptService.ConfirmAsync(
+            "Delete shopping list?",
+            "This shopping list will be removed.",
+            "Delete",
+            "Cancel");
+
+    private void ClearSelection()
+    {
+        SelectedList = null;
+        Items.Clear();
         OnPropertyChanged(nameof(ShowEmptyState));
     }
 

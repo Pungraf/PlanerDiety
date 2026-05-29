@@ -15,7 +15,7 @@ public sealed class ShoppingListViewModelTests
             [
                 new ShoppingListSummaryDto(Guid.NewGuid(), "Weekly shop", "2026-05-28T10:00:00Z", 3)
             ]);
-        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator());
+        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), new RecordingPromptService(confirmResult: false));
 
         await viewModel.LoadAsync();
 
@@ -39,7 +39,7 @@ public sealed class ShoppingListViewModelTests
                 [
                     new ShoppingListSummaryItemDto(Guid.NewGuid(), "Milk", 2m, "l", false)
                 ]));
-        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator());
+        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), new RecordingPromptService(confirmResult: false));
 
         await viewModel.LoadAsync();
         await viewModel.SelectListCommand.ExecuteAsync(viewModel.Lists.Single());
@@ -50,24 +50,91 @@ public sealed class ShoppingListViewModelTests
         Assert.Equal("Milk", viewModel.Items[0].Name);
     }
 
+    [Fact]
+    public async Task DeleteListFromIndex_ShouldRemoveListAndStayOnIndex()
+    {
+        var firstListId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var secondListId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        var api = new FakeShoppingListApiClient(
+            lists:
+            [
+                new ShoppingListSummaryDto(firstListId, "Week groceries", "2026-05-29", 4),
+                new ShoppingListSummaryDto(secondListId, "Dinner only", "2026-05-29", 2)
+            ]);
+        var prompts = new RecordingPromptService(confirmResult: true);
+        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), prompts);
+
+        await viewModel.LoadAsync();
+        await viewModel.DeleteListAsync(viewModel.Lists.First());
+
+        var remaining = Assert.Single(viewModel.Lists);
+        Assert.Equal(secondListId, remaining.Id);
+        Assert.Null(viewModel.SelectedList);
+        Assert.Empty(viewModel.Items);
+        Assert.True(viewModel.ShowListPicker);
+        Assert.Equal([firstListId], api.DeletedListIds);
+        Assert.Equal(2, api.ListCalls);
+        Assert.Equal(1, prompts.ConfirmCalls);
+    }
+
+    [Fact]
+    public async Task DeleteSelectedList_ShouldClearSelectionAndRefreshIndex()
+    {
+        var listId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var api = new FakeShoppingListApiClient(
+            lists:
+            [
+                new ShoppingListSummaryDto(listId, "Week groceries", "2026-05-29", 4)
+            ],
+            details: new ShoppingListDetailsDto(
+                listId,
+                "Week groceries",
+                [
+                    new ShoppingListSummaryItemDto(Guid.NewGuid(), "Milk", 2m, "l", false)
+                ]));
+        var prompts = new RecordingPromptService(confirmResult: true);
+        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), prompts);
+
+        await viewModel.LoadAsync();
+        await viewModel.SelectListAsync(viewModel.Lists.Single());
+        await viewModel.DeleteSelectedListAsync();
+
+        Assert.Null(viewModel.SelectedList);
+        Assert.Empty(viewModel.Lists);
+        Assert.Empty(viewModel.Items);
+        Assert.True(viewModel.ShowListPicker);
+        Assert.False(viewModel.ShowListDetails);
+        Assert.Equal([listId], api.DeletedListIds);
+        Assert.Equal(2, api.ListCalls);
+        Assert.Equal(1, prompts.ConfirmCalls);
+    }
+
     private sealed class FakeShoppingListApiClient : IShoppingListApiClient
     {
-        private readonly IReadOnlyList<ShoppingListSummaryDto> _lists;
+        private readonly List<ShoppingListSummaryDto> _lists;
         private readonly ShoppingListDetailsDto _details;
 
         public FakeShoppingListApiClient(
             IReadOnlyList<ShoppingListSummaryDto>? lists = null,
             ShoppingListDetailsDto? details = null)
         {
-            _lists = lists ?? [];
+            _lists = lists?.ToList() ?? [];
             _details = details ?? new ShoppingListDetailsDto(Guid.Empty, string.Empty, []);
         }
+
+        public List<Guid> DeletedListIds { get; } = [];
+
+        public int ListCalls { get; private set; }
 
         public Task<ShoppingListDetailsDto> CreateAsync(string name, IReadOnlyList<CreateShoppingListIngredientRequest> ingredientKeys, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
         public Task DeleteAsync(Guid listId, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
+        {
+            DeletedListIds.Add(listId);
+            _lists.RemoveAll(list => list.Id == listId);
+            return Task.CompletedTask;
+        }
 
         public Task<ShoppingListDetailsDto> GetDetailsAsync(Guid listId, CancellationToken cancellationToken = default)
             => Task.FromResult(_details);
@@ -76,7 +143,10 @@ public sealed class ShoppingListViewModelTests
             => throw new NotSupportedException();
 
         public Task<IReadOnlyList<ShoppingListSummaryDto>> ListAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult(_lists);
+        {
+            ListCalls++;
+            return Task.FromResult<IReadOnlyList<ShoppingListSummaryDto>>(_lists.ToArray());
+        }
 
         public Task<ShoppingListDetailsDto> ToggleItemAsync(Guid listId, Guid itemId, CancellationToken cancellationToken = default)
             => Task.FromResult(_details);
@@ -90,6 +160,24 @@ public sealed class ShoppingListViewModelTests
         {
             LastRoute = route;
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class RecordingPromptService : IUserPromptService
+    {
+        private readonly bool _confirmResult;
+
+        public RecordingPromptService(bool confirmResult)
+        {
+            _confirmResult = confirmResult;
+        }
+
+        public int ConfirmCalls { get; private set; }
+
+        public Task<bool> ConfirmAsync(string title, string message, string accept, string cancel)
+        {
+            ConfirmCalls++;
+            return Task.FromResult(_confirmResult);
         }
     }
 }
