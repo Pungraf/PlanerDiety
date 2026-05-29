@@ -28,6 +28,92 @@ public sealed class ShoppingListCreateViewModelTests
 
         Assert.False(viewModel.Days.Single().Meals.Single().Ingredients.Single().IsSelected);
     }
+
+    [Fact]
+    public async Task SelectFullWeekPreset_ShouldPreselectAllIngredients()
+    {
+        var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
+        var viewModel = new ShoppingListCreateViewModel(api, new RecordingNavigator());
+
+        await viewModel.LoadAsync();
+        viewModel.SelectPresetCommand.Execute(ShoppingListCreatePreset.FullWeek);
+
+        Assert.False(viewModel.IsPresetStep);
+        Assert.True(viewModel.IsBuilderStep);
+        Assert.All(
+            viewModel.Days.SelectMany(day => day.Meals).SelectMany(meal => meal.Ingredients),
+            ingredient => Assert.True(ingredient.IsSelected));
+    }
+
+    [Fact]
+    public async Task SaveAsync_ShouldSendSelectedIngredientsAndNavigateBackToIndex()
+    {
+        var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
+        var navigator = new RecordingNavigator();
+        var viewModel = new ShoppingListCreateViewModel(api, navigator);
+
+        await viewModel.LoadAsync();
+        viewModel.SelectPresetCommand.Execute(ShoppingListCreatePreset.FullWeek);
+        await viewModel.SaveAsync();
+
+        Assert.Equal("shopping-list", navigator.LastRoute);
+        Assert.Equal(
+            [
+                new CreateShoppingListIngredientRequest("2026-05-25", "breakfast", Guid.Parse("11111111-1111-1111-1111-111111111111")),
+                new CreateShoppingListIngredientRequest("2026-05-25", "lunch", Guid.Parse("22222222-2222-2222-2222-222222222222")),
+                new CreateShoppingListIngredientRequest("2026-05-26", "dinner", Guid.Parse("33333333-3333-3333-3333-333333333333"))
+            ],
+            api.CreatedIngredientKeys);
+    }
+
+    private static IReadOnlyList<ShoppingListCreateDayOptionDto> BuildCreateOptions()
+        =>
+        [
+            new ShoppingListCreateDayOptionDto(
+                "2026-05-25",
+                [
+                    new ShoppingListCreateMealOptionDto(
+                        "breakfast",
+                        "Oats",
+                        [
+                            new ShoppingListCreateIngredientOptionDto(
+                                Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                                "Oats",
+                                80m,
+                                "g",
+                                "Pantry",
+                                false)
+                        ]),
+                    new ShoppingListCreateMealOptionDto(
+                        "lunch",
+                        "Chicken bowl",
+                        [
+                            new ShoppingListCreateIngredientOptionDto(
+                                Guid.Parse("22222222-2222-2222-2222-222222222222"),
+                                "Chicken",
+                                140m,
+                                "g",
+                                "Meat",
+                                false)
+                        ])
+                ]),
+            new ShoppingListCreateDayOptionDto(
+                "2026-05-26",
+                [
+                    new ShoppingListCreateMealOptionDto(
+                        "dinner",
+                        "Tomato soup",
+                        [
+                            new ShoppingListCreateIngredientOptionDto(
+                                Guid.Parse("33333333-3333-3333-3333-333333333333"),
+                                "Tomato",
+                                180m,
+                                "g",
+                                "Produce",
+                                false)
+                        ])
+                ])
+        ];
 }
 
 file sealed class FakeShoppingListApiClient : IShoppingListApiClient
@@ -39,8 +125,13 @@ file sealed class FakeShoppingListApiClient : IShoppingListApiClient
         _createOptions = createOptions ?? [];
     }
 
+    public IReadOnlyList<CreateShoppingListIngredientRequest> CreatedIngredientKeys { get; private set; } = [];
+
     public Task<ShoppingListDetailsDto> CreateAsync(string name, IReadOnlyList<CreateShoppingListIngredientRequest> ingredientKeys, CancellationToken cancellationToken = default)
-        => throw new NotSupportedException();
+    {
+        CreatedIngredientKeys = ingredientKeys.ToArray();
+        return Task.FromResult(new ShoppingListDetailsDto(Guid.NewGuid(), name, []));
+    }
 
     public Task DeleteAsync(Guid listId, CancellationToken cancellationToken = default)
         => throw new NotSupportedException();
@@ -60,5 +151,11 @@ file sealed class FakeShoppingListApiClient : IShoppingListApiClient
 
 file sealed class RecordingNavigator : IAppNavigator
 {
-    public Task GoToAsync(string route) => Task.CompletedTask;
+    public string? LastRoute { get; private set; }
+
+    public Task GoToAsync(string route)
+    {
+        LastRoute = route;
+        return Task.CompletedTask;
+    }
 }

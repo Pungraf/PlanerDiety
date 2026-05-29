@@ -11,6 +11,8 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
 {
     private readonly IShoppingListApiClient _shoppingListApiClient;
     private readonly IAppNavigator _navigator;
+    private ShoppingListCreatePreset? _selectedPreset;
+    private bool _isPresetStep = true;
 
     public ShoppingListCreateViewModel(IShoppingListApiClient shoppingListApiClient, IAppNavigator navigator)
     {
@@ -22,6 +24,16 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
             ToggleMeal(meal as ShoppingListCreateMealViewModel);
             return Task.CompletedTask;
         });
+        SelectPresetCommand = new AsyncCommand(preset =>
+        {
+            if (preset is ShoppingListCreatePreset createPreset)
+            {
+                SelectPreset(createPreset);
+            }
+
+            return Task.CompletedTask;
+        });
+        SaveCommand = new AsyncCommand(_ => SaveAsync());
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -32,6 +44,43 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
 
     public AsyncCommand ToggleMealCommand { get; }
 
+    public AsyncCommand SelectPresetCommand { get; }
+
+    public AsyncCommand SaveCommand { get; }
+
+    public ShoppingListCreatePreset? SelectedPreset
+    {
+        get => _selectedPreset;
+        private set
+        {
+            if (_selectedPreset == value)
+            {
+                return;
+            }
+
+            _selectedPreset = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool IsPresetStep
+    {
+        get => _isPresetStep;
+        private set
+        {
+            if (_isPresetStep == value)
+            {
+                return;
+            }
+
+            _isPresetStep = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsBuilderStep));
+        }
+    }
+
+    public bool IsBuilderStep => !IsPresetStep;
+
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
         var options = await _shoppingListApiClient.GetCreateOptionsAsync(cancellationToken);
@@ -40,6 +89,19 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
         {
             Days.Add(day);
         }
+    }
+
+    public async Task SaveAsync(CancellationToken cancellationToken = default)
+    {
+        var selectedIngredients = Days
+            .SelectMany(day => day.Meals)
+            .SelectMany(meal => meal.Ingredients
+                .Where(ingredient => ingredient.IsSelected)
+                .Select(ingredient => new CreateShoppingListIngredientRequest(meal.Date, meal.SlotType, ingredient.IngredientId)))
+            .ToArray();
+
+        await _shoppingListApiClient.CreateAsync("Shopping list", selectedIngredients, cancellationToken);
+        await _navigator.GoToAsync("shopping-list");
     }
 
     private static ShoppingListCreateDayViewModel MapDay(ShoppingListCreateDayOptionDto day)
@@ -57,6 +119,24 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
                     ingredient.Category,
                     ingredient.IsSelected)).ToArray())).ToArray());
 
+    private void SelectPreset(ShoppingListCreatePreset preset)
+    {
+        SelectedPreset = preset;
+        switch (preset)
+        {
+            case ShoppingListCreatePreset.FullWeek:
+                SetIngredientSelection(isSelected: true);
+                IsPresetStep = false;
+                break;
+            case ShoppingListCreatePreset.SelectedDays:
+                IsPresetStep = false;
+                break;
+            case ShoppingListCreatePreset.Custom:
+                IsPresetStep = false;
+                break;
+        }
+    }
+
     private void ToggleMeal(ShoppingListCreateMealViewModel? meal)
     {
         if (meal is null)
@@ -71,8 +151,23 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
         }
     }
 
+    private void SetIngredientSelection(bool isSelected)
+    {
+        foreach (var ingredient in Days.SelectMany(day => day.Meals).SelectMany(meal => meal.Ingredients))
+        {
+            ingredient.IsSelected = isSelected;
+        }
+    }
+
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+public enum ShoppingListCreatePreset
+{
+    FullWeek,
+    SelectedDays,
+    Custom
 }
 
 public sealed class ShoppingListCreateDayViewModel
