@@ -86,6 +86,23 @@ public sealed class ShoppingListCreateViewModelTests
     }
 
     [Fact]
+    public async Task SaveAsync_ShouldNotCreateDuplicate_WhenNavigationFailsAfterCreate()
+    {
+        var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
+        var navigator = new RecordingNavigator(navigationException: new InvalidOperationException("Navigation failed."));
+        var viewModel = new ShoppingListCreateViewModel(api, navigator);
+
+        await viewModel.LoadAsync();
+        await viewModel.SelectPresetCommand.ExecuteAsync(ShoppingListCreatePreset.FullWeek);
+
+        await viewModel.SaveAsync();
+        await viewModel.SaveAsync();
+
+        Assert.Equal(1, api.CreateCalls);
+        Assert.Equal("Shopping list created, but navigation back to the shopping list failed.", viewModel.ErrorMessage);
+    }
+
+    [Fact]
     public void ShoppingListCreatePage_ShouldContainPresetAndSaveBindings()
     {
         var pageXamlPath = Path.GetFullPath(Path.Combine(
@@ -171,8 +188,12 @@ file sealed class FakeShoppingListApiClient : IShoppingListApiClient
 
     public IReadOnlyList<CreateShoppingListIngredientRequest> CreatedIngredientKeys { get; private set; } = [];
 
+    public int CreateCalls { get; private set; }
+
     public Task<ShoppingListDetailsDto> CreateAsync(string name, IReadOnlyList<CreateShoppingListIngredientRequest> ingredientKeys, CancellationToken cancellationToken = default)
     {
+        CreateCalls++;
+
         if (_createException is not null)
         {
             throw _createException;
@@ -200,10 +221,22 @@ file sealed class FakeShoppingListApiClient : IShoppingListApiClient
 
 file sealed class RecordingNavigator : IAppNavigator
 {
+    private readonly Exception? _navigationException;
+
+    public RecordingNavigator(Exception? navigationException = null)
+    {
+        _navigationException = navigationException;
+    }
+
     public string? LastRoute { get; private set; }
 
     public Task GoToAsync(string route)
     {
+        if (_navigationException is not null)
+        {
+            throw _navigationException;
+        }
+
         LastRoute = route;
         return Task.CompletedTask;
     }

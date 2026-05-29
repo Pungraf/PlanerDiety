@@ -11,6 +11,7 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
 {
     private readonly IShoppingListApiClient _shoppingListApiClient;
     private readonly IAppNavigator _navigator;
+    private bool _hasCreatedCurrentSelection;
     private string? _errorMessage;
     private ShoppingListCreatePreset? _selectedPreset;
     private bool _isPresetStep = true;
@@ -99,6 +100,7 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
 
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
+        _hasCreatedCurrentSelection = false;
         ErrorMessage = null;
         var options = await _shoppingListApiClient.GetCreateOptionsAsync(cancellationToken);
         Days.Clear();
@@ -112,21 +114,37 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
     {
         ErrorMessage = null;
 
+        if (_hasCreatedCurrentSelection)
+        {
+            ErrorMessage = "Shopping list created, but navigation back to the shopping list failed.";
+            return;
+        }
+
+        var selectedIngredients = Days
+            .SelectMany(day => day.Meals)
+            .SelectMany(meal => meal.Ingredients
+                .Where(ingredient => ingredient.IsSelected)
+                .Select(ingredient => new CreateShoppingListIngredientRequest(meal.Date, meal.SlotType, ingredient.IngredientId)))
+            .ToArray();
+
         try
         {
-            var selectedIngredients = Days
-                .SelectMany(day => day.Meals)
-                .SelectMany(meal => meal.Ingredients
-                    .Where(ingredient => ingredient.IsSelected)
-                    .Select(ingredient => new CreateShoppingListIngredientRequest(meal.Date, meal.SlotType, ingredient.IngredientId)))
-                .ToArray();
-
             await _shoppingListApiClient.CreateAsync("Shopping list", selectedIngredients, cancellationToken);
-            await _navigator.GoToAsync("//main/shopping-list");
+            _hasCreatedCurrentSelection = true;
         }
         catch (Exception exception)
         {
             ErrorMessage = exception.Message;
+            return;
+        }
+
+        try
+        {
+            await _navigator.GoToAsync("//main/shopping-list");
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "Shopping list created, but navigation back to the shopping list failed.";
         }
     }
 
@@ -147,6 +165,7 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
 
     private void SelectPreset(ShoppingListCreatePreset preset)
     {
+        _hasCreatedCurrentSelection = false;
         SelectedPreset = preset;
         switch (preset)
         {
@@ -170,6 +189,7 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
             return;
         }
 
+        _hasCreatedCurrentSelection = false;
         var nextValue = meal.Ingredients.Any(ingredient => ingredient.IsSelected);
         foreach (var ingredient in meal.Ingredients)
         {
@@ -179,6 +199,7 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
 
     private void SetIngredientSelection(bool isSelected)
     {
+        _hasCreatedCurrentSelection = false;
         foreach (var ingredient in Days.SelectMany(day => day.Meals).SelectMany(meal => meal.Ingredients))
         {
             ingredient.IsSelected = isSelected;
