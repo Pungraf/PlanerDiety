@@ -1,4 +1,6 @@
 using DietPlanner.Application.Abstractions;
+using DietPlanner.Application.Planning;
+using DietPlanner.Application.Shopping;
 using DietPlanner.Domain.Entities;
 using DietPlanner.Domain.Enums;
 
@@ -9,10 +11,17 @@ public sealed record GetCurrentPlanQuery(Guid UserId);
 public sealed class GetCurrentPlanHandler
 {
     private readonly IApplicationDbContext _dbContext;
+    private readonly IWeeklyPlanGenerator _weeklyPlanGenerator;
+    private readonly IShoppingListSyncService _shoppingListSyncService;
 
-    public GetCurrentPlanHandler(IApplicationDbContext dbContext)
+    public GetCurrentPlanHandler(
+        IApplicationDbContext dbContext,
+        IWeeklyPlanGenerator weeklyPlanGenerator,
+        IShoppingListSyncService shoppingListSyncService)
     {
         _dbContext = dbContext;
+        _weeklyPlanGenerator = weeklyPlanGenerator;
+        _shoppingListSyncService = shoppingListSyncService;
     }
 
     public async Task<CurrentPlanDto?> HandleAsync(GetCurrentPlanQuery query, CancellationToken cancellationToken)
@@ -22,7 +31,11 @@ public sealed class GetCurrentPlanHandler
         var plan = await _dbContext.FindReadableWeeklyPlanAsync(query.UserId, cancellationToken);
         if (plan is null)
         {
-            return null;
+            plan = await BootstrapInitialPlanAsync(query.UserId, cancellationToken);
+            if (plan is null)
+            {
+                return null;
+            }
         }
 
         var mealIds = plan.Days
@@ -34,6 +47,30 @@ public sealed class GetCurrentPlanHandler
         var meals = await _dbContext.FindMealsByIdsAsync(mealIds, cancellationToken);
 
         return CurrentPlanDto.From(plan, meals);
+    }
+
+    private async Task<WeeklyPlan?> BootstrapInitialPlanAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var meals = await _dbContext.SearchMealsAsync(null, null, null, cancellationToken);
+        if (meals.Count == 0)
+        {
+            return null;
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var startDate = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+        var plan = _weeklyPlanGenerator.Generate(new WeeklyPlanGenerationRequest(
+            userId,
+            startDate,
+            DinnerMode.BreakfastStyle,
+            meals));
+
+        plan.Activate();
+        await _dbContext.AddWeeklyPlanAsync(plan, cancellationToken);
+        await _shoppingListSyncService.SyncAsync(plan, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return plan;
     }
 }
 

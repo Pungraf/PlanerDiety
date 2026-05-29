@@ -91,10 +91,17 @@ public sealed class PlansController : ControllerBase
         }
 
         var result = await _replaceMealHandler.HandleAsync(
-            new ReplaceMealCommand(userId.Value, parsedDate, parsedSlotType, request.MealId),
+            new ReplaceMealCommand(userId.Value, parsedDate, parsedSlotType, request.MealId, request.DeleteLinkedShoppingLists),
             cancellationToken);
 
-        return result is null ? NotFound() : Ok(ReplaceMealResponse.From(result));
+        if (result is null || !result.Succeeded)
+        {
+            return result?.FailureReason == PlanEditFailureReason.LinkedShoppingListsExist
+                ? Conflict(new { code = "linkedShoppingListsExist" })
+                : NotFound();
+        }
+
+        return Ok(ReplaceMealResponse.From(result));
     }
 
     [HttpPost("current/copy-day")]
@@ -114,10 +121,17 @@ public sealed class PlansController : ControllerBase
         }
 
         var result = await _copyDayHandler.HandleAsync(
-            new CopyDayCommand(userId.Value, sourceDate, targetDate),
+            new CopyDayCommand(userId.Value, sourceDate, targetDate, request.DeleteLinkedShoppingLists),
             cancellationToken);
 
-        return result is null ? NotFound() : Ok();
+        if (result is null || !result.Succeeded)
+        {
+            return result?.FailureReason == PlanEditFailureReason.LinkedShoppingListsExist
+                ? Conflict(new { code = "linkedShoppingListsExist" })
+                : NotFound();
+        }
+
+        return Ok();
     }
 
     private Guid? GetCurrentUserId()
@@ -129,16 +143,16 @@ public sealed class PlansController : ControllerBase
     }
 }
 
-public sealed record ReplaceMealRequest(Guid MealId);
+public sealed record ReplaceMealRequest(Guid MealId, bool DeleteLinkedShoppingLists = false);
 
-public sealed record CopyDayRequest(string SourceDate, string TargetDate);
+public sealed record CopyDayRequest(string SourceDate, string TargetDate, bool DeleteLinkedShoppingLists = false);
 
 public sealed record ReplaceMealResponse(string Date, string SlotType, Guid MealId)
 {
     public static ReplaceMealResponse From(ReplaceMealResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
-        return new ReplaceMealResponse(result.Date.ToString("yyyy-MM-dd"), result.SlotType.ToString().ToLowerInvariant(), result.MealId);
+        return new ReplaceMealResponse(result.Date!.Value.ToString("yyyy-MM-dd"), result.SlotType!.Value.ToString().ToLowerInvariant(), result.MealId!.Value);
     }
 }
 

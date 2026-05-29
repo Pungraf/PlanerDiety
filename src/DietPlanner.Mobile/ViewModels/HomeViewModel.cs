@@ -14,17 +14,25 @@ public sealed class HomeViewModel : INotifyPropertyChanged
     private readonly IPlansApiClient _plansApiClient;
     private readonly IAppNavigator _navigator;
     private readonly IMealSearchContextStore _mealSearchContextStore;
+    private readonly IMealDetailsContextStore _mealDetailsContextStore;
     private HomeDayViewModel? _selectedDay;
     private string? _errorMessage;
+    private bool _isLoading;
 
-    public HomeViewModel(IPlansApiClient plansApiClient, IAppNavigator navigator, IMealSearchContextStore mealSearchContextStore)
+    public HomeViewModel(
+        IPlansApiClient plansApiClient,
+        IAppNavigator navigator,
+        IMealSearchContextStore mealSearchContextStore,
+        IMealDetailsContextStore mealDetailsContextStore)
     {
         _plansApiClient = plansApiClient;
         _navigator = navigator;
         _mealSearchContextStore = mealSearchContextStore;
+        _mealDetailsContextStore = mealDetailsContextStore;
         LoadCommand = new AsyncCommand(_ => LoadAsync());
         CopyDayCommand = new AsyncCommand(target => CopyDayAsync(target as HomeDayViewModel), () => SelectedDay is not null);
         OpenMealSearchCommand = new AsyncCommand(slot => OpenMealSearchAsync(slot as HomeMealSlotViewModel), () => SelectedDay is not null);
+        OpenMealDetailsCommand = new AsyncCommand(slot => OpenMealDetailsAsync(slot as HomeMealSlotViewModel), () => SelectedDay is not null);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -36,6 +44,8 @@ public sealed class HomeViewModel : INotifyPropertyChanged
     public AsyncCommand CopyDayCommand { get; }
 
     public AsyncCommand OpenMealSearchCommand { get; }
+
+    public AsyncCommand OpenMealDetailsCommand { get; }
 
     public HomeDayViewModel? SelectedDay
     {
@@ -49,10 +59,29 @@ public sealed class HomeViewModel : INotifyPropertyChanged
 
             _selectedDay = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(HasSelectedDay));
             CopyDayCommand.RaiseCanExecuteChanged();
             OpenMealSearchCommand.RaiseCanExecuteChanged();
+            OpenMealDetailsCommand.RaiseCanExecuteChanged();
         }
     }
+
+    public bool IsLoading
+    {
+        get => _isLoading;
+        private set
+        {
+            if (_isLoading == value)
+            {
+                return;
+            }
+
+            _isLoading = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool HasSelectedDay => SelectedDay is not null;
 
     public string? ErrorMessage
     {
@@ -77,17 +106,19 @@ public sealed class HomeViewModel : INotifyPropertyChanged
     private async Task LoadAsync(DateOnly? preferredDate, CancellationToken cancellationToken)
     {
         ErrorMessage = null;
+        IsLoading = true;
 
         try
         {
             var plan = await _plansApiClient.GetCurrentPlanAsync(cancellationToken);
             var startDate = ParseApiDate(plan.StartDate);
-            var selectedDate = preferredDate ?? SelectedDay?.Date ?? startDate;
-
             var mappedDays = plan.Days
                 .Select(MapDay)
                 .OrderBy(day => day.Date)
                 .ToArray();
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var defaultDate = mappedDays.Any(day => day.Date == today) ? today : startDate;
+            var selectedDate = preferredDate ?? SelectedDay?.Date ?? defaultDate;
 
             Days.Clear();
             foreach (var day in mappedDays)
@@ -102,6 +133,10 @@ public sealed class HomeViewModel : INotifyPropertyChanged
         {
             ErrorMessage = exception.Message;
         }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     private async Task CopyDayAsync(HomeDayViewModel? targetDay)
@@ -115,7 +150,7 @@ public sealed class HomeViewModel : INotifyPropertyChanged
 
         try
         {
-            await _plansApiClient.CopyDayAsync(SelectedDay.Date, targetDay.Date);
+            await _plansApiClient.CopyDayAsync(SelectedDay.Date, targetDay.Date, deleteLinkedShoppingLists: false);
             await LoadAsync(targetDay.Date, CancellationToken.None);
         }
         catch (Exception exception)
@@ -135,11 +170,23 @@ public sealed class HomeViewModel : INotifyPropertyChanged
         await _navigator.GoToAsync("meal-search");
     }
 
+    private async Task OpenMealDetailsAsync(HomeMealSlotViewModel? slot)
+    {
+        if (slot?.MealId is null)
+        {
+            return;
+        }
+
+        _mealDetailsContextStore.Current = new MealDetailsContext(slot.MealId.Value);
+        await _navigator.GoToAsync("meal-details");
+    }
+
     private static HomeDayViewModel MapDay(PlanDayDto day)
     {
         var parsedDate = ParseApiDate(day.Date);
         var meals = day.Meals.Select(slot => new HomeMealSlotViewModel(
             slot.SlotType,
+            slot.MealId,
             slot.Name,
             slot.Kcal,
             slot.Protein)).ToArray();
@@ -186,15 +233,18 @@ public sealed class HomeDayViewModel
 
 public sealed class HomeMealSlotViewModel
 {
-    public HomeMealSlotViewModel(string slotType, string name, int kcal, int protein)
+    public HomeMealSlotViewModel(string slotType, Guid? mealId, string name, int kcal, int protein)
     {
         SlotType = slotType;
+        MealId = mealId;
         Name = string.IsNullOrWhiteSpace(name) ? "Choose meal" : name;
         Kcal = kcal;
         Protein = protein;
     }
 
     public string SlotType { get; }
+
+    public Guid? MealId { get; }
 
     public string SlotLabel => char.ToUpperInvariant(SlotType[0]) + SlotType[1..];
 
@@ -203,4 +253,6 @@ public sealed class HomeMealSlotViewModel
     public int Kcal { get; }
 
     public int Protein { get; }
+
+    public string MacroSummary => $"{Kcal} kcal / {Protein} g protein";
 }

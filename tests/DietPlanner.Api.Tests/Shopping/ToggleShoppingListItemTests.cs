@@ -12,8 +12,9 @@ public class ToggleShoppingListItemTests
     {
         await using var app = await PlansApiFactory.WithShoppingListAsync();
         using var client = await app.CreateAuthenticatedClientAsync();
+        var listId = (await app.ReadShoppingListAsync())!.Id;
 
-        var response = await client.PostAsync($"/api/shopping-lists/current/items/{TestData.ChickenShoppingListItemId}/toggle", null);
+        var response = await client.PostAsync($"/api/shopping-lists/{listId}/items/{TestData.ChickenShoppingListItemId}/toggle", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -27,7 +28,7 @@ public class ToggleShoppingListItemTests
     }
 
     [Fact]
-    public async Task ToggleItem_ShouldPreserveCheckedState_WhenShoppingListIsRegenerated()
+    public async Task ToggleItem_ShouldNotBypassLinkedListConflictOnPlanEdit()
     {
         await using var app = await PlansApiFactory.WithPlanAndShoppingListAsync(
             userId => PlansApiFactory.CreateActivePlan(
@@ -50,25 +51,18 @@ public class ToggleShoppingListItemTests
                 return shoppingList;
             });
         using var client = await app.CreateAuthenticatedClientAsync();
+        var listId = (await app.ReadShoppingListAsync())!.Id;
 
-        var toggleResponse = await client.PostAsync($"/api/shopping-lists/current/items/{TestData.OatsShoppingListItemId}/toggle", null);
+        var toggleResponse = await client.PostAsync($"/api/shopping-lists/{listId}/items/{TestData.OatsShoppingListItemId}/toggle", null);
         toggleResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var replaceResponse = await client.PutAsJsonAsync("/api/plans/current/days/2026-05-26/slots/dinner", new
         {
-            MealId = TestData.LunchMealId
+            MealId = TestData.LunchMealId,
+            DeleteLinkedShoppingLists = false
         });
 
-        replaceResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var listResponse = await client.GetAsync("/api/shopping-lists/current");
-        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var list = await listResponse.Content.ReadFromJsonAsync<ShoppingListResponse>();
-        list.Should().NotBeNull();
-
-        var oats = list!.SummaryItems.Single(item => item.Name == "Oats" && item.Unit == "g");
-        oats.IsChecked.Should().BeTrue();
+        replaceResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 }
 

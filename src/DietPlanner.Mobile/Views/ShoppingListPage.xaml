@@ -3,18 +3,79 @@
     x:Class="DietPlanner.Mobile.Views.ShoppingListPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:viewModels="clr-namespace:DietPlanner.Mobile.ViewModels"
+    x:DataType="viewModels:ShoppingListViewModel"
     Title="Shopping list">
-    <ScrollView>
-        <VerticalStackLayout Padding="24" Spacing="16">
-            <Label FontAttributes="Bold" FontSize="28" Text="Shopping list" />
-            <Label Text="Check off ingredients as you shop. Checked items move to the bottom." />
+    <Grid>
+        <CollectionView
+            ItemsSource="{Binding Lists}"
+            IsVisible="{Binding ShowListPicker}"
+            SelectionMode="None">
+            <CollectionView.Header>
+                <VerticalStackLayout Padding="24" Spacing="16">
+                    <Label FontAttributes="Bold" FontSize="28" Text="Shopping lists" />
+                    <Label Text="Open a saved list or create a new one." />
+                    <Button Command="{Binding OpenCreateCommand}" Text="Create list" />
+                    <Label TextColor="IndianRed" Text="{Binding ErrorMessage}" />
+                </VerticalStackLayout>
+            </CollectionView.Header>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="viewModels:ShoppingListSummaryViewModel">
+                    <Border Margin="24,0,24,12" Padding="16" StrokeThickness="0">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <VerticalStackLayout Spacing="4">
+                                <Label FontAttributes="Bold" Text="{Binding Name}" />
+                                <Label Text="{Binding CreatedAt}" />
+                                <Label Text="{Binding ItemCount, StringFormat='Items: {0}'}" />
+                            </VerticalStackLayout>
+                            <Button
+                                Grid.Column="1"
+                                VerticalOptions="Center"
+                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectListCommand}"
+                                CommandParameter="{Binding .}"
+                                Text="Open" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+            <CollectionView.Footer>
+                <Label
+                    Margin="24,0,24,24"
+                    HorizontalTextAlignment="Center"
+                    IsVisible="{Binding ShowEmptyState}"
+                    Text="No items to shop for yet." />
+            </CollectionView.Footer>
+        </CollectionView>
 
-            <CollectionView ItemsSource="{Binding SummaryItems}" SelectionMode="None">
-                <CollectionView.EmptyView>
-                    <Label HorizontalTextAlignment="Center" Text="No items to shop for yet." />
-                </CollectionView.EmptyView>
-                <CollectionView.ItemTemplate>
-                    <DataTemplate>
+        <CollectionView
+            ItemsSource="{Binding Items}"
+            IsVisible="{Binding ShowListDetails}"
+            SelectionMode="None">
+            <CollectionView.Header>
+                <VerticalStackLayout Padding="24" Spacing="16">
+                    <Label FontAttributes="Bold" FontSize="28" Text="{Binding SelectedList.Name}" />
+                    <Label Text="Check items off as you shop." />
+                    <Label TextColor="IndianRed" Text="{Binding ErrorMessage}" />
+                </VerticalStackLayout>
+            </CollectionView.Header>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="viewModels:ShoppingListSummaryItemViewModel">
+                    <VerticalStackLayout Margin="24,0,24,12" Spacing="8">
+                        <Grid
+                            ColumnDefinitions="Auto,*"
+                            ColumnSpacing="12"
+                            IsVisible="{Binding ShowCheckedDivider}">
+                            <Label
+                                FontAttributes="Bold"
+                                FontSize="16"
+                                Text="Bought" />
+                            <BoxView
+                                Grid.Column="1"
+                                HeightRequest="1"
+                                HorizontalOptions="Fill"
+                                VerticalOptions="Center" />
+                        </Grid>
+
                         <Border Padding="16" StrokeThickness="0">
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                                 <VerticalStackLayout Spacing="2">
@@ -23,16 +84,31 @@
                                 </VerticalStackLayout>
                                 <Button
                                     Grid.Column="1"
+                                    VerticalOptions="Center"
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleItemCommand}"
                                     CommandParameter="{Binding .}"
                                     Text="{Binding ActionLabel}" />
                             </Grid>
                         </Border>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
+                    </VerticalStackLayout>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+            <CollectionView.Footer>
+                <Label
+                    Margin="24,0,24,24"
+                    HorizontalTextAlignment="Center"
+                    IsVisible="{Binding ShowEmptyState}"
+                    Text="No items to shop for yet." />
+            </CollectionView.Footer>
+        </CollectionView>
 
-            <Label TextColor="IndianRed" Text="{Binding ErrorMessage}" />
+        <VerticalStackLayout
+            IsVisible="{Binding IsLoading}"
+            HorizontalOptions="Center"
+            VerticalOptions="Center"
+            Spacing="8">
+            <ActivityIndicator IsRunning="{Binding IsLoading}" />
+            <Label HorizontalTextAlignment="Center" Text="Loading shopping list..." />
         </VerticalStackLayout>
-    </ScrollView>
+    </Grid>
 </ContentPage>

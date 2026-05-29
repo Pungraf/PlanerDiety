@@ -13,12 +13,14 @@ public class ShoppingListConfiguration : IEntityTypeConfiguration<ShoppingList>
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedNever();
         builder.Property(x => x.WeeklyPlanId).IsRequired();
+        builder.Property(x => x.Name).HasMaxLength(120).IsRequired();
+        builder.Property(x => x.CreatedAt).IsRequired();
 
-        builder.HasIndex(x => x.WeeklyPlanId).IsUnique();
+        builder.HasIndex(x => x.WeeklyPlanId);
 
         builder.HasOne<WeeklyPlan>()
-            .WithOne()
-            .HasForeignKey<ShoppingList>(x => x.WeeklyPlanId)
+            .WithMany()
+            .HasForeignKey(nameof(ShoppingList.WeeklyPlanId))
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasMany(x => x.Items)

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="DietPlanner.Mobile.Views.MealDetailsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Recipe">
+    <CollectionView ItemsSource="{Binding Ingredients}">
+        <CollectionView.Header>
+            <VerticalStackLayout Padding="20" Spacing="12">
+                <Label FontSize="26" FontAttributes="Bold" Text="{Binding Name}" />
+                <Label Text="{Binding MacroSummary}" />
+                <Label FontAttributes="Bold" Text="Ingredients" />
+            </VerticalStackLayout>
+        </CollectionView.Header>
+        <CollectionView.ItemTemplate>
+            <DataTemplate>
+                <Grid Padding="20,8" ColumnDefinitions="*,Auto">
+                    <VerticalStackLayout>
+                        <Label FontAttributes="Bold" Text="{Binding Name}" />
+                        <Label Text="{Binding Category}" />
+                    </VerticalStackLayout>
+                    <Label Grid.Column="1" Text="{Binding QuantityText}" VerticalOptions="Center" />
+                </Grid>
+            </DataTemplate>
+        </CollectionView.ItemTemplate>
+        <CollectionView.Footer>
+            <VerticalStackLayout Padding="20" Spacing="8">
+                <Label FontAttributes="Bold" Text="Preparation" />
+                <Label Text="{Binding Description}" LineBreakMode="WordWrap" />
+            </VerticalStackLayout>
+        </CollectionView.Footer>
+    </CollectionView>
+</ContentPage>

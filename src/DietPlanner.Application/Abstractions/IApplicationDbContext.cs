@@ -25,7 +25,13 @@ public interface IApplicationDbContext
 
     Task<ShoppingList?> FindShoppingListByWeeklyPlanIdAsync(Guid weeklyPlanId, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<ShoppingList>> ListShoppingListsByWeeklyPlanIdAsync(Guid weeklyPlanId, CancellationToken cancellationToken);
+
+    Task<ShoppingList?> FindShoppingListByIdAsync(Guid shoppingListId, CancellationToken cancellationToken);
+
     Task AddShoppingListAsync(ShoppingList shoppingList, CancellationToken cancellationToken);
+
+    void RemoveShoppingLists(IEnumerable<ShoppingList> shoppingLists);
 
     Task<IReadOnlyList<Meal>> SearchMealsAsync(string? name, MealType? type, string? ingredient, CancellationToken cancellationToken);
 

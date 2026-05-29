@@ -73,6 +73,20 @@ internal sealed class PlansApiFactory : WebApplicationFactory<Program>, IAsyncDi
         return factory;
     }
 
+    public static async Task<PlansApiFactory> WithUserOnlyAsync()
+    {
+        var factory = new PlansApiFactory();
+        await factory._connection.OpenAsync();
+        factory.User = new User(Guid.NewGuid(), "Ada Lovelace", "ada@example.com", "google-sub-123");
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<DietPlannerDbContext>();
+        await dbContext.Users.AddAsync(factory.User);
+        await dbContext.SaveChangesAsync();
+
+        return factory;
+    }
+
     public static async Task<PlansApiFactory> WithPlanAndShoppingListAsync(
         Func<Guid, WeeklyPlan> planFactory,
         Func<WeeklyPlan, ShoppingList> shoppingListFactory)
@@ -136,6 +150,33 @@ internal sealed class PlansApiFactory : WebApplicationFactory<Program>, IAsyncDi
             : await dbContext.ShoppingLists
                 .Include(list => list.Items)
                 .SingleOrDefaultAsync(list => list.WeeklyPlanId == plan);
+    }
+
+    public async Task<IReadOnlyList<ShoppingList>> ReadShoppingListsAsync()
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<DietPlannerDbContext>();
+        var plan = await dbContext.WeeklyPlans
+            .Where(candidate => candidate.UserId == User.Id)
+            .OrderByDescending(candidate => candidate.Status == WeeklyPlanStatus.Active)
+            .ThenByDescending(candidate => candidate.StartDate)
+            .Select(candidate => candidate.Id)
+            .FirstOrDefaultAsync();
+
+        return plan == Guid.Empty
+            ? []
+            : await dbContext.ShoppingLists
+                .Include(list => list.Items)
+                .Where(list => list.WeeklyPlanId == plan)
+                .ToListAsync();
+    }
+
+    public async Task SeedMealsAsync(IEnumerable<Meal> meals)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<DietPlannerDbContext>();
+        await dbContext.Meals.AddRangeAsync(meals);
+        await dbContext.SaveChangesAsync();
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)

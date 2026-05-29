@@ -139,10 +139,46 @@ public class DietPlannerDbContext : DbContext, IApplicationDbContext
             .SingleOrDefaultAsync(list => list.WeeklyPlanId == weeklyPlanId, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<ShoppingList>> ListShoppingListsByWeeklyPlanIdAsync(Guid weeklyPlanId, CancellationToken cancellationToken)
+    {
+        if (weeklyPlanId == Guid.Empty)
+        {
+            throw new ArgumentException("Value cannot be empty.", nameof(weeklyPlanId));
+        }
+
+        var lists = await ShoppingLists
+            .Include(list => list.Items)
+            .Where(list => list.WeeklyPlanId == weeklyPlanId)
+            .ToListAsync(cancellationToken);
+
+        return lists
+            .OrderByDescending(list => list.CreatedAt)
+            .ThenBy(list => list.Name)
+            .ToArray();
+    }
+
+    public Task<ShoppingList?> FindShoppingListByIdAsync(Guid shoppingListId, CancellationToken cancellationToken)
+    {
+        if (shoppingListId == Guid.Empty)
+        {
+            throw new ArgumentException("Value cannot be empty.", nameof(shoppingListId));
+        }
+
+        return ShoppingLists
+            .Include(list => list.Items)
+            .SingleOrDefaultAsync(list => list.Id == shoppingListId, cancellationToken);
+    }
+
     public Task AddShoppingListAsync(ShoppingList shoppingList, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(shoppingList);
         return ShoppingLists.AddAsync(shoppingList, cancellationToken).AsTask();
+    }
+
+    public void RemoveShoppingLists(IEnumerable<ShoppingList> shoppingLists)
+    {
+        ArgumentNullException.ThrowIfNull(shoppingLists);
+        ShoppingLists.RemoveRange(shoppingLists);
     }
 
     public async Task<IReadOnlyList<Meal>> SearchMealsAsync(

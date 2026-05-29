@@ -11,5 +11,7 @@ public partial class AppShell : Shell
         HomeShellContent.Content = homePage;
         ShoppingListShellContent.Content = shoppingListPage;
         Routing.RegisterRoute("meal-search", typeof(MealSearchPage));
+        Routing.RegisterRoute("meal-details", typeof(MealDetailsPage));
+        Routing.RegisterRoute("shopping-list-create", typeof(ShoppingListCreatePage));
     }
 }

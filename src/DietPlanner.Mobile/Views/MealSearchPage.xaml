@@ -3,31 +3,33 @@
     x:Class="DietPlanner.Mobile.Views.MealSearchPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:viewModels="clr-namespace:DietPlanner.Mobile.ViewModels"
+    x:DataType="viewModels:MealSearchViewModel"
     Title="Meal search">
-    <VerticalStackLayout Padding="24" Spacing="16">
-        <Label FontAttributes="Bold" FontSize="28" Text="{Binding ScreenTitle}" />
-        <Label Text="{Binding CurrentMealName, StringFormat='Current: {0}'}" />
-        <SearchBar Placeholder="Search meals" Text="{Binding SearchText}" />
-
-        <CollectionView ItemsSource="{Binding Meals}">
-            <CollectionView.ItemTemplate>
-                <DataTemplate>
-                    <Border Padding="16" StrokeThickness="0">
-                        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                            <Label FontAttributes="Bold" Text="{Binding Name}" />
-                            <Label Grid.Row="1" Text="{Binding MacroSummary}" />
-                            <Button
-                                Grid.Column="1"
-                                Grid.RowSpan="2"
-                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ReplaceMealCommand}"
-                                CommandParameter="{Binding .}"
-                                Text="Use meal" />
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
-
-        <Label TextColor="IndianRed" Text="{Binding ErrorMessage}" />
-    </VerticalStackLayout>
+    <CollectionView ItemsSource="{Binding Meals}" SelectionMode="None">
+        <CollectionView.Header>
+            <VerticalStackLayout Padding="24" Spacing="16">
+                <Label FontAttributes="Bold" FontSize="28" Text="{Binding ScreenTitle}" />
+                <Label Text="{Binding CurrentMealName, StringFormat='Current: {0}'}" />
+                <SearchBar Placeholder="Search meals" Text="{Binding SearchText}" />
+                <Label TextColor="IndianRed" Text="{Binding ErrorMessage}" />
+            </VerticalStackLayout>
+        </CollectionView.Header>
+        <CollectionView.ItemTemplate>
+            <DataTemplate x:DataType="viewModels:MealSearchMealViewModel">
+                <Border Margin="24,0,24,12" Padding="16" StrokeThickness="0">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                        <Label FontAttributes="Bold" Text="{Binding Name}" />
+                        <Label Grid.Row="1" Text="{Binding MacroSummary}" />
+                        <Button
+                            Grid.Column="1"
+                            Grid.RowSpan="2"
+                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ReplaceMealCommand}"
+                            CommandParameter="{Binding .}"
+                            Text="Use meal" />
+                    </Grid>
+                </Border>
+            </DataTemplate>
+        </CollectionView.ItemTemplate>
+    </CollectionView>
 </ContentPage>

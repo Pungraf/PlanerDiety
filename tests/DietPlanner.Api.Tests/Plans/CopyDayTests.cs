@@ -40,10 +40,39 @@ public class CopyDayTests
         targetDay.MealSlots.Single(slot => slot.SlotType == MealSlotType.Dinner).MealId.Should().Be(TestData.LunchMealId);
 
         var shoppingList = await app.ReadShoppingListAsync();
-        shoppingList.Should().NotBeNull();
-        shoppingList!.Items.Should().HaveCount(3);
-        shoppingList.Items.Should().ContainSingle(item => item.IngredientId == TestData.OatsIngredientId && item.Quantity == 160m && item.Unit == "g");
-        shoppingList.Items.Should().ContainSingle(item => item.IngredientId == TestData.ChickenIngredientId && item.Quantity == 280m && item.Unit == "g");
-        shoppingList.Items.Should().ContainSingle(item => item.IngredientId == TestData.TomatoIngredientId && item.Quantity == 240m && item.Unit == "g");
+        shoppingList.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CopyDay_ShouldReturnConflict_WhenLinkedShoppingListsExistAndDeleteIsNotConfirmed()
+    {
+        await using var app = await PlansApiFactory.WithShoppingListAsync();
+        using var client = await app.CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/plans/current/copy-day", new
+        {
+            SourceDate = "2026-05-25",
+            TargetDate = "2026-05-26",
+            DeleteLinkedShoppingLists = false
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task CopyDay_ShouldDeleteLinkedShoppingLists_WhenDeleteIsConfirmed()
+    {
+        await using var app = await PlansApiFactory.WithShoppingListAsync();
+        using var client = await app.CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/plans/current/copy-day", new
+        {
+            SourceDate = "2026-05-25",
+            TargetDate = "2026-05-26",
+            DeleteLinkedShoppingLists = true
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await app.ReadShoppingListsAsync()).Should().BeEmpty();
     }
 }

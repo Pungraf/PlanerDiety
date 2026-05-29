@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 using DietPlanner.Domain.Enums;
 
 namespace DietPlanner.Importer.Import;
@@ -23,7 +22,7 @@ public sealed class MealImporter
     {
         ArgumentNullException.ThrowIfNull(reader);
 
-        var header = await ReadCsvRecordAsync(reader, cancellationToken);
+        var header = await CsvRecordReader.ReadRecordAsync(reader, cancellationToken);
         if (header is null)
         {
             return MealImportResult.Empty;
@@ -37,7 +36,7 @@ public sealed class MealImporter
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var columns = await ReadCsvRecordAsync(reader, cancellationToken);
+            var columns = await CsvRecordReader.ReadRecordAsync(reader, cancellationToken);
             if (columns is null)
             {
                 break;
@@ -150,97 +149,6 @@ public sealed class MealImporter
             throw new FormatException(
                 $"Invalid CSV row {rowNumber}, column '{ExpectedHeader[columnIndex]}', value '{value}'.",
                 exception);
-        }
-    }
-
-    private static ValueTask<List<string>?> ReadCsvRecordAsync(TextReader reader, CancellationToken cancellationToken)
-    {
-        var values = new List<string>();
-        var current = new StringBuilder();
-        var inQuotes = false;
-        var fieldStarted = false;
-
-        while (true)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var next = reader.Read();
-            if (next == -1)
-            {
-                if (inQuotes)
-                {
-                    throw new FormatException("Invalid CSV content. Unterminated quoted field.");
-                }
-
-                if (!fieldStarted && values.Count == 0 && current.Length == 0)
-                {
-                    return ValueTask.FromResult<List<string>?>(null);
-                }
-
-                values.Add(current.ToString());
-                return ValueTask.FromResult<List<string>?>(values);
-            }
-
-            var character = (char)next;
-
-            if (inQuotes)
-            {
-                if (character == '"')
-                {
-                    if (reader.Peek() == '"')
-                    {
-                        reader.Read();
-                        current.Append('"');
-                        continue;
-                    }
-
-                    inQuotes = false;
-                    continue;
-                }
-
-                current.Append(character);
-                continue;
-            }
-
-            if (character == ',')
-            {
-                values.Add(current.ToString());
-                current.Clear();
-                fieldStarted = false;
-                continue;
-            }
-
-            if (character == '\r')
-            {
-                if (reader.Peek() == '\n')
-                {
-                    reader.Read();
-                }
-
-                values.Add(current.ToString());
-                return ValueTask.FromResult<List<string>?>(values);
-            }
-
-            if (character == '\n')
-            {
-                values.Add(current.ToString());
-                return ValueTask.FromResult<List<string>?>(values);
-            }
-
-            if (character == '"')
-            {
-                if (current.Length > 0)
-                {
-                    throw new FormatException("Invalid CSV content. Unexpected quote inside unquoted field.");
-                }
-
-                inQuotes = true;
-                fieldStarted = true;
-                continue;
-            }
-
-            current.Append(character);
-            fieldStarted = true;
         }
     }
 

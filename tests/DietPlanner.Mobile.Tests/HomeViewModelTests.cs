@@ -25,7 +25,7 @@ public sealed class HomeViewModelTests
                             new PlanMealSlotDto("dinner", Guid.NewGuid(), "Salmon Potatoes", 600, 35)
                         ])
                 ]));
-        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new InMemoryMealSearchContextStore());
+        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore());
 
         await viewModel.LoadAsync();
 
@@ -35,10 +35,33 @@ public sealed class HomeViewModelTests
     }
 
     [Fact]
+    public async Task LoadAsync_ShouldSelectTodayWhenTodayExistsInPlan()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var yesterday = today.AddDays(-1);
+        var plansClient = new FakePlansApiClient(
+            CreatePlan(
+                yesterday,
+                [
+                    new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Yesterday breakfast", 400, 20)
+                ],
+                today,
+                [
+                    new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Today breakfast", 500, 30)
+                ]));
+        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore());
+
+        await viewModel.LoadAsync();
+
+        Assert.NotNull(viewModel.SelectedDay);
+        Assert.Equal(today, viewModel.SelectedDay!.Date);
+    }
+
+    [Fact]
     public async Task CopySelectedDayToTarget_ShouldCallApiAndRefreshDays()
     {
-        var sourceDate = new DateOnly(2026, 5, 26);
-        var targetDate = new DateOnly(2026, 5, 27);
+        var sourceDate = DateOnly.FromDateTime(DateTime.Today).AddDays(-2);
+        var targetDate = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
         var plansClient = new FakePlansApiClient(
             CreatePlan(
                 sourceDate,
@@ -51,7 +74,7 @@ public sealed class HomeViewModelTests
                 [
                     new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Toast", 250, 10)
                 ]));
-        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new InMemoryMealSearchContextStore());
+        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore());
 
         await viewModel.LoadAsync();
         var targetDay = Assert.Single(viewModel.Days, day => day.Date == targetDate);
@@ -63,6 +86,34 @@ public sealed class HomeViewModelTests
         targetDay = Assert.Single(viewModel.Days, day => day.Date == targetDate);
         Assert.Equal(1800, targetDay.TotalKcal);
         Assert.Equal(110, targetDay.TotalProtein);
+    }
+
+    [Fact]
+    public async Task OpenMealDetailsCommand_ShouldStoreMealIdAndNavigateToDetails()
+    {
+        var mealId = Guid.NewGuid();
+        var plansClient = new FakePlansApiClient(
+            new CurrentPlanDto(
+                Guid.NewGuid(),
+                "active",
+                "2026-05-26",
+                [
+                    new PlanDayDto(
+                        "2026-05-26",
+                        [
+                            new PlanMealSlotDto("breakfast", mealId, "Oats Bowl", 500, 30)
+                        ])
+                ]));
+        var navigator = new RecordingNavigator();
+        var mealDetailsStore = new InMemoryMealDetailsContextStore();
+        var viewModel = new HomeViewModel(plansClient, navigator, new InMemoryMealSearchContextStore(), mealDetailsStore);
+
+        await viewModel.LoadAsync();
+        await viewModel.OpenMealDetailsCommand.ExecuteAsync(viewModel.SelectedDay!.Meals.First());
+
+        Assert.NotNull(mealDetailsStore.Current);
+        Assert.Equal(mealId, mealDetailsStore.Current!.MealId);
+        Assert.Equal("meal-details", navigator.LastRoute);
     }
 
     [Fact]
@@ -81,13 +132,33 @@ public sealed class HomeViewModelTests
                             new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Oats Bowl", 500, 30)
                         ])
                 ]));
-        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new InMemoryMealSearchContextStore());
+        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore());
 
         await viewModel.LoadAsync();
 
         Assert.Equal("The API returned an invalid plan date.", viewModel.ErrorMessage);
         Assert.Null(viewModel.SelectedDay);
         Assert.Empty(viewModel.Days);
+    }
+
+    [Fact]
+    public async Task LoadAsync_ShouldResetIsLoadingAfterSuccess()
+    {
+        var plansClient = new FakePlansApiClient(
+            new CurrentPlanDto(
+                Guid.NewGuid(),
+                "active",
+                DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd"),
+                [
+                    new PlanDayDto(
+                        DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd"),
+                        [new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Oats Bowl", 500, 30)])
+                ]));
+        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore());
+
+        await viewModel.LoadAsync();
+
+        Assert.False(viewModel.IsLoading);
     }
 
     private static CurrentPlanDto CreatePlan(
@@ -119,10 +190,13 @@ public sealed class HomeViewModelTests
 
         public DateOnly? LastCopiedTargetDate { get; private set; }
 
-        public Task CopyDayAsync(DateOnly sourceDate, DateOnly targetDate, CancellationToken cancellationToken = default)
+        public bool? LastDeleteLinkedShoppingLists { get; private set; }
+
+        public Task CopyDayAsync(DateOnly sourceDate, DateOnly targetDate, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
         {
             LastCopiedSourceDate = sourceDate;
             LastCopiedTargetDate = targetDate;
+            LastDeleteLinkedShoppingLists = deleteLinkedShoppingLists;
 
             var sourceDay = _plan.Days.Single(day => day.Date == sourceDate.ToString("yyyy-MM-dd"));
             _plan = _plan with
@@ -147,7 +221,17 @@ public sealed class HomeViewModelTests
             throw new NotSupportedException();
         }
 
-        public Task ReplaceMealAsync(DateOnly date, string slotType, Guid mealId, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyList<MealSummaryDto>> GetMealCatalogAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<MealDetailsDto> GetMealDetailsAsync(Guid mealId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task ReplaceMealAsync(DateOnly date, string slotType, Guid mealId, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -155,8 +239,11 @@ public sealed class HomeViewModelTests
 
     private sealed class RecordingNavigator : IAppNavigator
     {
+        public string? LastRoute { get; private set; }
+
         public Task GoToAsync(string route)
         {
+            LastRoute = route;
             return Task.CompletedTask;
         }
     }

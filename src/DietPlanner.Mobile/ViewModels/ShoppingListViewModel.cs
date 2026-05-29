@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using DietPlanner.Mobile.Commands;
+using DietPlanner.Mobile.Navigation;
 using DietPlanner.Mobile.Services;
 
 namespace DietPlanner.Mobile.ViewModels;
@@ -10,23 +11,56 @@ namespace DietPlanner.Mobile.ViewModels;
 public sealed class ShoppingListViewModel : INotifyPropertyChanged
 {
     private readonly IShoppingListApiClient _shoppingListApiClient;
+    private readonly IAppNavigator _navigator;
     private string? _errorMessage;
     private int _requestVersion;
+    private bool _isLoading;
+    private ShoppingListSummaryViewModel? _selectedList;
 
-    public ShoppingListViewModel(IShoppingListApiClient shoppingListApiClient)
+    public ShoppingListViewModel(IShoppingListApiClient shoppingListApiClient, IAppNavigator navigator)
     {
         _shoppingListApiClient = shoppingListApiClient;
+        _navigator = navigator;
         LoadCommand = new AsyncCommand(_ => LoadAsync());
         ToggleItemCommand = new AsyncCommand(item => ToggleItemAsync(item as ShoppingListSummaryItemViewModel));
+        SelectListCommand = new AsyncCommand(item => SelectListAsync(item as ShoppingListSummaryViewModel));
+        OpenCreateCommand = new AsyncCommand(_ => _navigator.GoToAsync("shopping-list-create"));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public ObservableCollection<ShoppingListSummaryItemViewModel> SummaryItems { get; } = [];
+    public ObservableCollection<ShoppingListSummaryViewModel> Lists { get; } = [];
+
+    public ObservableCollection<ShoppingListSummaryItemViewModel> Items { get; } = [];
 
     public AsyncCommand LoadCommand { get; }
 
     public AsyncCommand ToggleItemCommand { get; }
+
+    public AsyncCommand SelectListCommand { get; }
+
+    public AsyncCommand OpenCreateCommand { get; }
+
+    public bool ShowListPicker => SelectedList is null;
+
+    public bool ShowListDetails => SelectedList is not null;
+
+    public ShoppingListSummaryViewModel? SelectedList
+    {
+        get => _selectedList;
+        private set
+        {
+            if (_selectedList == value)
+            {
+                return;
+            }
+
+            _selectedList = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ShowListPicker));
+            OnPropertyChanged(nameof(ShowListDetails));
+        }
+    }
 
     public string? ErrorMessage
     {
@@ -43,17 +77,39 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool IsLoading
+    {
+        get => _isLoading;
+        private set
+        {
+            if (_isLoading == value)
+            {
+                return;
+            }
+
+            _isLoading = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ShowList));
+            OnPropertyChanged(nameof(ShowEmptyState));
+        }
+    }
+
+    public bool ShowList => !IsLoading;
+
+    public bool ShowEmptyState => !IsLoading && Lists.Count == 0 && Items.Count == 0 && string.IsNullOrWhiteSpace(ErrorMessage);
+
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
         var requestVersion = Interlocked.Increment(ref _requestVersion);
         ErrorMessage = null;
+        IsLoading = true;
 
         try
         {
-            var shoppingList = await _shoppingListApiClient.GetCurrentAsync(cancellationToken);
+            var shoppingLists = await _shoppingListApiClient.ListAsync(cancellationToken);
             if (requestVersion == _requestVersion)
             {
-                ApplyShoppingList(shoppingList);
+                ApplyLists(shoppingLists);
             }
         }
         catch (Exception exception)
@@ -63,24 +119,33 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
                 ErrorMessage = exception.Message;
             }
         }
+        finally
+        {
+            if (requestVersion == _requestVersion)
+            {
+                IsLoading = false;
+            }
+        }
     }
 
-    public async Task ToggleItemAsync(ShoppingListSummaryItemViewModel? item, CancellationToken cancellationToken = default)
+    public async Task SelectListAsync(ShoppingListSummaryViewModel? list, CancellationToken cancellationToken = default)
     {
-        if (item is null)
+        if (list is null)
         {
             return;
         }
 
         var requestVersion = Interlocked.Increment(ref _requestVersion);
         ErrorMessage = null;
+        IsLoading = true;
 
         try
         {
-            var shoppingList = await _shoppingListApiClient.ToggleItemAsync(item.Id, cancellationToken);
+            var shoppingList = await _shoppingListApiClient.GetDetailsAsync(list.Id, cancellationToken);
             if (requestVersion == _requestVersion)
             {
-                ApplyShoppingList(shoppingList);
+                SelectedList = list;
+                ApplyItems(shoppingList);
             }
         }
         catch (Exception exception)
@@ -90,19 +155,82 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
                 ErrorMessage = exception.Message;
             }
         }
+        finally
+        {
+            if (requestVersion == _requestVersion)
+            {
+                IsLoading = false;
+            }
+        }
     }
 
-    private void ApplyShoppingList(ShoppingListDto shoppingList)
+    public async Task ToggleItemAsync(ShoppingListSummaryItemViewModel? item, CancellationToken cancellationToken = default)
     {
-        var mappedItems = shoppingList.SummaryItems
-            .Select(item => new ShoppingListSummaryItemViewModel(item.Id, item.Name, item.Quantity, item.Unit, item.IsChecked))
+        if (item is null || SelectedList is null)
+        {
+            return;
+        }
+
+        var requestVersion = Interlocked.Increment(ref _requestVersion);
+        ErrorMessage = null;
+        IsLoading = true;
+
+        try
+        {
+            var shoppingList = await _shoppingListApiClient.ToggleItemAsync(SelectedList.Id, item.Id, cancellationToken);
+            if (requestVersion == _requestVersion)
+            {
+                ApplyItems(shoppingList);
+            }
+        }
+        catch (Exception exception)
+        {
+            if (requestVersion == _requestVersion)
+            {
+                ErrorMessage = exception.Message;
+            }
+        }
+        finally
+        {
+            if (requestVersion == _requestVersion)
+            {
+                IsLoading = false;
+            }
+        }
+    }
+
+    private void ApplyLists(IReadOnlyList<ShoppingListSummaryDto> shoppingLists)
+    {
+        Lists.Clear();
+        foreach (var list in shoppingLists.Select(list => new ShoppingListSummaryViewModel(list.Id, list.Name, list.CreatedAt, list.ItemCount)))
+        {
+            Lists.Add(list);
+        }
+
+        SelectedList = null;
+        Items.Clear();
+        OnPropertyChanged(nameof(ShowEmptyState));
+    }
+
+    private void ApplyItems(ShoppingListDetailsDto shoppingList)
+    {
+        var mappedItems = shoppingList.Items
+            .Select((item, index) => new ShoppingListSummaryItemViewModel(
+                item.Id,
+                item.Name,
+                item.Quantity,
+                item.Unit,
+                item.IsChecked,
+                item.IsChecked && (index == 0 || !shoppingList.Items[index - 1].IsChecked)))
             .ToArray();
 
-        SummaryItems.Clear();
+        Items.Clear();
         foreach (var item in mappedItems)
         {
-            SummaryItems.Add(item);
+            Items.Add(item);
         }
+
+        OnPropertyChanged(nameof(ShowEmptyState));
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
@@ -111,15 +239,35 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
     }
 }
 
+public sealed class ShoppingListSummaryViewModel
+{
+    public ShoppingListSummaryViewModel(Guid id, string name, string createdAt, int itemCount)
+    {
+        Id = id;
+        Name = name;
+        CreatedAt = createdAt;
+        ItemCount = itemCount;
+    }
+
+    public Guid Id { get; }
+
+    public string Name { get; }
+
+    public string CreatedAt { get; }
+
+    public int ItemCount { get; }
+}
+
 public sealed class ShoppingListSummaryItemViewModel
 {
-    public ShoppingListSummaryItemViewModel(Guid id, string name, decimal quantity, string unit, bool isChecked)
+    public ShoppingListSummaryItemViewModel(Guid id, string name, decimal quantity, string unit, bool isChecked, bool showCheckedDivider)
     {
         Id = id;
         Name = name;
         Quantity = quantity;
         Unit = unit;
         IsChecked = isChecked;
+        ShowCheckedDivider = showCheckedDivider;
     }
 
     public Guid Id { get; }
@@ -131,6 +279,8 @@ public sealed class ShoppingListSummaryItemViewModel
     public string Unit { get; }
 
     public bool IsChecked { get; }
+
+    public bool ShowCheckedDivider { get; }
 
     public string QuantityText => $"{Quantity.ToString("0.##", CultureInfo.InvariantCulture)} {Unit}".Trim();
 

@@ -12,14 +12,21 @@ public sealed class MealSearchViewModel : INotifyPropertyChanged
     private readonly IPlansApiClient _plansApiClient;
     private readonly IMealSearchContextStore _mealSearchContextStore;
     private readonly IAppNavigator _navigator;
+    private readonly IUserPromptService _promptService;
+    private IReadOnlyList<MealSearchMealViewModel> _catalog = [];
     private string? _searchText;
     private string? _errorMessage;
 
-    public MealSearchViewModel(IPlansApiClient plansApiClient, IMealSearchContextStore mealSearchContextStore, IAppNavigator navigator)
+    public MealSearchViewModel(
+        IPlansApiClient plansApiClient,
+        IMealSearchContextStore mealSearchContextStore,
+        IAppNavigator navigator,
+        IUserPromptService promptService)
     {
         _plansApiClient = plansApiClient;
         _mealSearchContextStore = mealSearchContextStore;
         _navigator = navigator;
+        _promptService = promptService;
         LoadCommand = new AsyncCommand(_ => LoadAsync());
         ReplaceMealCommand = new AsyncCommand(meal => ReplaceMealAsync(meal as MealSearchMealViewModel));
     }
@@ -50,7 +57,7 @@ public sealed class MealSearchViewModel : INotifyPropertyChanged
 
             _searchText = value;
             OnPropertyChanged();
-            _ = LoadMealsAsync(CancellationToken.None);
+            ApplyFilter();
         }
     }
 
@@ -97,7 +104,24 @@ public sealed class MealSearchViewModel : INotifyPropertyChanged
 
         try
         {
-            await _plansApiClient.ReplaceMealAsync(context.Date, context.SlotType, meal.Id);
+            await _plansApiClient.ReplaceMealAsync(context.Date, context.SlotType, meal.Id, deleteLinkedShoppingLists: false);
+            await _navigator.GoToAsync("//home");
+            _mealSearchContextStore.Current = null;
+        }
+        catch (LinkedShoppingListsExistException)
+        {
+            var confirmed = await _promptService.ConfirmAsync(
+                "Delete shopping lists?",
+                "This week has linked shopping lists. Changing the plan will delete them.",
+                "Continue",
+                "Cancel");
+
+            if (!confirmed)
+            {
+                return;
+            }
+
+            await _plansApiClient.ReplaceMealAsync(context.Date, context.SlotType, meal.Id, deleteLinkedShoppingLists: true);
             await _navigator.GoToAsync("//home");
             _mealSearchContextStore.Current = null;
         }
@@ -111,21 +135,33 @@ public sealed class MealSearchViewModel : INotifyPropertyChanged
     {
         try
         {
-            var meals = await _plansApiClient.SearchMealsAsync(SearchText, cancellationToken);
-            var mappedMeals = meals
-                .Select(meal => new MealSearchMealViewModel(meal.Id, meal.Name, meal.Type, meal.Kcal, meal.Protein))
-                .OrderBy(meal => meal.Name)
-                .ToArray();
-
-            Meals.Clear();
-            foreach (var meal in mappedMeals)
+            if (_catalog.Count == 0)
             {
-                Meals.Add(meal);
+                var meals = await _plansApiClient.GetMealCatalogAsync(cancellationToken);
+                _catalog = meals
+                    .Select(meal => new MealSearchMealViewModel(meal.Id, meal.Name, meal.Type, meal.Kcal, meal.Protein))
+                    .OrderBy(meal => meal.Name)
+                    .ToArray();
             }
+
+            ApplyFilter();
         }
         catch (Exception exception)
         {
             ErrorMessage = exception.Message;
+        }
+    }
+
+    private void ApplyFilter()
+    {
+        var filteredMeals = string.IsNullOrWhiteSpace(SearchText)
+            ? _catalog
+            : _catalog.Where(meal => meal.Name.Contains(SearchText.Trim(), StringComparison.OrdinalIgnoreCase)).ToArray();
+
+        Meals.Clear();
+        foreach (var meal in filteredMeals)
+        {
+            Meals.Add(meal);
         }
     }
 

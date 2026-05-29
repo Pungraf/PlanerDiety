@@ -6,16 +6,29 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="8.0.100" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <MauiAsset Include="appsettings.mobile.json" LogicalName="appsettings.mobile.json" />
+  </ItemGroup>
+
   <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0-android'">
     <OutputType>Exe</OutputType>
     <UseMaui>true</UseMaui>
     <SingleProject>true</SingleProject>
+    <MauiEnableXamlCBindingWithSourceCompilation>true</MauiEnableXamlCBindingWithSourceCompilation>
     <ApplicationTitle>DietPlanner.Mobile</ApplicationTitle>
     <ApplicationId>com.johny.dietplanner.mobile</ApplicationId>
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
     <SupportedOSPlatformVersion>21.0</SupportedOSPlatformVersion>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-android'">
+    <PackageReference Include="Xamarin.GooglePlayServices.Auth" Version="120.5.0" />
+  </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
     <Compile Remove="App.xaml.cs" />
@@ -25,13 +38,17 @@
     <Compile Remove="Platforms\Android\**\*.cs" />
     <Compile Remove="Views\HomePage.xaml.cs" />
     <Compile Remove="Views\LoginPage.xaml.cs" />
+    <Compile Remove="Views\MealDetailsPage.xaml.cs" />
     <Compile Remove="Views\MealSearchPage.xaml.cs" />
+    <Compile Remove="Views\ShoppingListCreatePage.xaml.cs" />
     <Compile Remove="Views\ShoppingListPage.xaml.cs" />
     <MauiXaml Remove="App.xaml" />
     <MauiXaml Remove="AppShell.xaml" />
     <MauiXaml Remove="Views\HomePage.xaml" />
     <MauiXaml Remove="Views\LoginPage.xaml" />
+    <MauiXaml Remove="Views\MealDetailsPage.xaml" />
     <MauiXaml Remove="Views\MealSearchPage.xaml" />
+    <MauiXaml Remove="Views\ShoppingListCreatePage.xaml" />
     <MauiXaml Remove="Views\ShoppingListPage.xaml" />
   </ItemGroup>
 </Project>

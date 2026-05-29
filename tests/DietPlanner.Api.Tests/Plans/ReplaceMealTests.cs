@@ -37,10 +37,7 @@ public class ReplaceMealTests
             .MealId.Should().Be(TestData.LunchMealId);
 
         var shoppingList = await app.ReadShoppingListAsync();
-        shoppingList.Should().NotBeNull();
-        shoppingList!.Items.Should().HaveCount(2);
-        shoppingList.Items.Should().ContainSingle(item => item.IngredientId == TestData.ChickenIngredientId && item.Quantity == 140m && item.Unit == "g");
-        shoppingList.Items.Should().ContainSingle(item => item.IngredientId == TestData.TomatoIngredientId && item.Quantity == 300m && item.Unit == "g");
+        shoppingList.Should().BeNull();
     }
 
     [Fact]
@@ -83,6 +80,37 @@ public class ReplaceMealTests
         untouchedDraft.Days.Single(day => day.Date == new DateOnly(2026, 6, 2))
             .MealSlots.Single(slot => slot.SlotType == MealSlotType.Breakfast)
             .MealId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ReplaceMeal_ShouldReturnConflict_WhenLinkedShoppingListsExistAndDeleteIsNotConfirmed()
+    {
+        await using var app = await PlansApiFactory.WithShoppingListAsync();
+        using var client = await app.CreateAuthenticatedClientAsync();
+
+        var response = await client.PutAsJsonAsync("/api/plans/current/days/2026-05-25/slots/breakfast", new
+        {
+            MealId = TestData.DinnerMealId,
+            DeleteLinkedShoppingLists = false
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task ReplaceMeal_ShouldDeleteLinkedShoppingLists_WhenDeleteIsConfirmed()
+    {
+        await using var app = await PlansApiFactory.WithShoppingListAsync();
+        using var client = await app.CreateAuthenticatedClientAsync();
+
+        var response = await client.PutAsJsonAsync("/api/plans/current/days/2026-05-25/slots/breakfast", new
+        {
+            MealId = TestData.DinnerMealId,
+            DeleteLinkedShoppingLists = true
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await app.ReadShoppingListsAsync()).Should().BeEmpty();
     }
 
     [Fact]

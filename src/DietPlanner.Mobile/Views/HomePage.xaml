@@ -3,10 +3,20 @@
     x:Class="DietPlanner.Mobile.Views.HomePage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:viewModels="clr-namespace:DietPlanner.Mobile.ViewModels"
+    x:DataType="viewModels:HomeViewModel"
     Title="Home">
     <ScrollView>
         <VerticalStackLayout Padding="24" Spacing="16">
             <Label FontAttributes="Bold" FontSize="28" Text="Today's plan" />
+
+            <VerticalStackLayout
+                IsVisible="{Binding IsLoading}"
+                HorizontalOptions="Center"
+                Spacing="8">
+                <ActivityIndicator IsRunning="{Binding IsLoading}" />
+                <Label HorizontalTextAlignment="Center" Text="Loading today's plan..." />
+            </VerticalStackLayout>
 
             <Picker
                 Title="Select day"
@@ -14,7 +24,10 @@
                 ItemsSource="{Binding Days}"
                 SelectedItem="{Binding SelectedDay}" />
 
-            <Border Padding="16" StrokeThickness="0">
+            <Border
+                Padding="16"
+                StrokeThickness="0"
+                IsVisible="{Binding HasSelectedDay}">
                 <VerticalStackLayout Spacing="6">
                     <Label FontAttributes="Bold" FontSize="18" Text="Daily totals" />
                     <Label Text="{Binding SelectedDay.TotalKcal, StringFormat='Calories: {0} kcal'}" />
@@ -22,20 +35,26 @@
                 </VerticalStackLayout>
             </Border>
 
-            <VerticalStackLayout Spacing="10">
+            <VerticalStackLayout Spacing="10" IsVisible="{Binding HasSelectedDay}">
                 <Label FontAttributes="Bold" FontSize="18" Text="Meals" />
-                <CollectionView ItemsSource="{Binding SelectedDay.Meals}">
+                <CollectionView ItemsSource="{Binding SelectedDay.Meals}" SelectionMode="None">
                     <CollectionView.ItemTemplate>
-                        <DataTemplate>
+                        <DataTemplate x:DataType="viewModels:HomeMealSlotViewModel">
                             <Border Padding="16" StrokeThickness="0">
-                                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
-                                    <Label FontAttributes="Bold" Text="{Binding SlotLabel}" />
-                                    <Label Grid.Row="1" Text="{Binding Name}" />
-                                    <Label
-                                        Grid.Row="2"
-                                        Text="{Binding Kcal, StringFormat='{}{0} kcal'}" />
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenMealDetailsCommand}"
+                                        CommandParameter="{Binding .}" />
+                                </Border.GestureRecognizers>
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                    <VerticalStackLayout Spacing="4">
+                                        <Label FontAttributes="Bold" Text="{Binding SlotLabel}" />
+                                        <Label Text="{Binding Name}" />
+                                        <Label Text="{Binding MacroSummary}" />
+                                    </VerticalStackLayout>
                                     <Button
                                         Grid.Column="1"
+                                        VerticalOptions="Center"
                                         Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenMealSearchCommand}"
                                         CommandParameter="{Binding .}"
                                         Text="Replace" />
@@ -46,11 +65,11 @@
                 </CollectionView>
             </VerticalStackLayout>
 
-            <VerticalStackLayout Spacing="10">
+            <VerticalStackLayout Spacing="10" IsVisible="{Binding HasSelectedDay}">
                 <Label FontAttributes="Bold" FontSize="18" Text="Copy selected day to" />
-                <CollectionView ItemsSource="{Binding Days}">
+                <CollectionView ItemsSource="{Binding Days}" SelectionMode="None">
                     <CollectionView.ItemTemplate>
-                        <DataTemplate>
+                        <DataTemplate x:DataType="viewModels:HomeDayViewModel">
                             <Grid ColumnDefinitions="*,Auto" Padding="0,4">
                                 <Label Text="{Binding DisplayDate}" VerticalOptions="Center" />
                                 <Button

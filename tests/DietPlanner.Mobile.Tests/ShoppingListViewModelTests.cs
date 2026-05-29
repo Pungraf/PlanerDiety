@@ -1,3 +1,4 @@
+using DietPlanner.Mobile.Navigation;
 using DietPlanner.Mobile.Services;
 using DietPlanner.Mobile.ViewModels;
 using Xunit;
@@ -7,125 +8,88 @@ namespace DietPlanner.Mobile.Tests;
 public sealed class ShoppingListViewModelTests
 {
     [Fact]
-    public async Task ToggleItem_ShouldRefreshListWithCheckedItemAtBottom()
+    public async Task LoadAsync_ShouldShowShoppingListsBeforeItems()
     {
-        var milkId = Guid.NewGuid();
-        var oatsId = Guid.NewGuid();
-        var apiClient = new FakeShoppingListApiClient(
-            new ShoppingListDto(
-                Guid.NewGuid(),
+        var api = new FakeShoppingListApiClient(
+            lists:
+            [
+                new ShoppingListSummaryDto(Guid.NewGuid(), "Weekly shop", "2026-05-28T10:00:00Z", 3)
+            ]);
+        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator());
+
+        await viewModel.LoadAsync();
+
+        Assert.Single(viewModel.Lists);
+        Assert.Equal("Weekly shop", viewModel.Lists[0].Name);
+        Assert.True(viewModel.ShowListPicker);
+    }
+
+    [Fact]
+    public async Task SelectList_ShouldLoadItemsForSelectedList()
+    {
+        var listId = Guid.NewGuid();
+        var api = new FakeShoppingListApiClient(
+            lists:
+            [
+                new ShoppingListSummaryDto(listId, "Weekly shop", "2026-05-28T10:00:00Z", 2)
+            ],
+            details: new ShoppingListDetailsDto(
+                listId,
+                "Weekly shop",
                 [
-                    new ShoppingListSummaryItemDto(milkId, "Milk", 2m, "l", false),
-                    new ShoppingListSummaryItemDto(oatsId, "Oats", 1m, "kg", false)
-                ]),
-            new ShoppingListDto(
-                Guid.NewGuid(),
-                [
-                    new ShoppingListSummaryItemDto(oatsId, "Oats", 1m, "kg", false),
-                    new ShoppingListSummaryItemDto(milkId, "Milk", 2m, "l", true)
+                    new ShoppingListSummaryItemDto(Guid.NewGuid(), "Milk", 2m, "l", false)
                 ]));
-        var viewModel = new ShoppingListViewModel(apiClient);
+        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator());
 
         await viewModel.LoadAsync();
-        await viewModel.ToggleItemAsync(viewModel.SummaryItems.First());
+        await viewModel.SelectListCommand.ExecuteAsync(viewModel.Lists.Single());
 
-        var toggledItem = viewModel.SummaryItems.Last();
-        Assert.True(toggledItem.IsChecked);
-        Assert.Equal("Milk", toggledItem.Name);
-    }
-
-    [Fact]
-    public async Task LoadAsync_ShouldAllowEmptyShoppingList()
-    {
-        var apiClient = new FakeShoppingListApiClient(new ShoppingListDto(Guid.Empty, []), new ShoppingListDto(Guid.Empty, []));
-        var viewModel = new ShoppingListViewModel(apiClient);
-
-        await viewModel.LoadAsync();
-
-        Assert.Empty(viewModel.SummaryItems);
-        Assert.Null(viewModel.ErrorMessage);
-    }
-
-    [Fact]
-    public async Task LoadAsync_ShouldIgnoreStaleResponse_WhenNewerRequestCompletesFirst()
-    {
-        var staleList = new ShoppingListDto(
-            Guid.NewGuid(),
-            [new ShoppingListSummaryItemDto(Guid.NewGuid(), "Stale", 1m, "pc", false)]);
-        var freshList = new ShoppingListDto(
-            Guid.NewGuid(),
-            [new ShoppingListSummaryItemDto(Guid.NewGuid(), "Fresh", 2m, "pc", false)]);
-        var apiClient = new SequencedShoppingListApiClient(staleList, freshList);
-        var viewModel = new ShoppingListViewModel(apiClient);
-
-        var firstLoad = viewModel.LoadAsync();
-        var secondLoad = viewModel.LoadAsync();
-
-        apiClient.ReleaseSecond();
-        await secondLoad;
-        apiClient.ReleaseFirst();
-        await firstLoad;
-
-        Assert.Single(viewModel.SummaryItems);
-        Assert.Equal("Fresh", viewModel.SummaryItems[0].Name);
+        Assert.False(viewModel.ShowListPicker);
+        Assert.True(viewModel.ShowListDetails);
+        Assert.Single(viewModel.Items);
+        Assert.Equal("Milk", viewModel.Items[0].Name);
     }
 
     private sealed class FakeShoppingListApiClient : IShoppingListApiClient
     {
-        private readonly ShoppingListDto _initialList;
-        private readonly ShoppingListDto _toggledList;
+        private readonly IReadOnlyList<ShoppingListSummaryDto> _lists;
+        private readonly ShoppingListDetailsDto _details;
 
-        public FakeShoppingListApiClient(ShoppingListDto initialList, ShoppingListDto toggledList)
+        public FakeShoppingListApiClient(
+            IReadOnlyList<ShoppingListSummaryDto>? lists = null,
+            ShoppingListDetailsDto? details = null)
         {
-            _initialList = initialList;
-            _toggledList = toggledList;
+            _lists = lists ?? [];
+            _details = details ?? new ShoppingListDetailsDto(Guid.Empty, string.Empty, []);
         }
 
-        public Task<ShoppingListDto> GetCurrentAsync(CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(_initialList);
-        }
+        public Task<ShoppingListDetailsDto> CreateAsync(string name, IReadOnlyList<CreateShoppingListIngredientRequest> ingredientKeys, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
 
-        public Task<ShoppingListDto> ToggleItemAsync(Guid itemId, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(_toggledList);
-        }
+        public Task DeleteAsync(Guid listId, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<ShoppingListDetailsDto> GetDetailsAsync(Guid listId, CancellationToken cancellationToken = default)
+            => Task.FromResult(_details);
+
+        public Task<IReadOnlyList<ShoppingListCreateDayOptionDto>> GetCreateOptionsAsync(CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<ShoppingListSummaryDto>> ListAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(_lists);
+
+        public Task<ShoppingListDetailsDto> ToggleItemAsync(Guid listId, Guid itemId, CancellationToken cancellationToken = default)
+            => Task.FromResult(_details);
     }
 
-    private sealed class SequencedShoppingListApiClient : IShoppingListApiClient
+    private sealed class RecordingNavigator : IAppNavigator
     {
-        private readonly ShoppingListDto _firstResponse;
-        private readonly ShoppingListDto _secondResponse;
-        private readonly TaskCompletionSource _firstGate = new();
-        private readonly TaskCompletionSource _secondGate = new();
-        private int _calls;
+        public string? LastRoute { get; private set; }
 
-        public SequencedShoppingListApiClient(ShoppingListDto firstResponse, ShoppingListDto secondResponse)
+        public Task GoToAsync(string route)
         {
-            _firstResponse = firstResponse;
-            _secondResponse = secondResponse;
+            LastRoute = route;
+            return Task.CompletedTask;
         }
-
-        public Task<ShoppingListDto> ToggleItemAsync(Guid itemId, CancellationToken cancellationToken = default)
-        {
-            throw new NotSupportedException();
-        }
-
-        public async Task<ShoppingListDto> GetCurrentAsync(CancellationToken cancellationToken = default)
-        {
-            var call = Interlocked.Increment(ref _calls);
-            if (call == 1)
-            {
-                await _firstGate.Task.WaitAsync(cancellationToken);
-                return _firstResponse;
-            }
-
-            await _secondGate.Task.WaitAsync(cancellationToken);
-            return _secondResponse;
-        }
-
-        public void ReleaseFirst() => _firstGate.TrySetResult();
-
-        public void ReleaseSecond() => _secondGate.TrySetResult();
     }
 }

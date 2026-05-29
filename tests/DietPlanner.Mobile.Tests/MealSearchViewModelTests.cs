@@ -11,50 +11,40 @@ public sealed class MealSearchViewModelTests
     public async Task LoadAsync_ShouldLoadMealsAndApplySearchFilter()
     {
         var plansClient = new FakePlansApiClient(
-            new Dictionary<string, IReadOnlyList<MealSummaryDto>?>
-            {
-                [""] =
-                [
-                    new MealSummaryDto(Guid.NewGuid(), "Chicken Rice", "lunch", 700, 45),
-                    new MealSummaryDto(Guid.NewGuid(), "Oats Bowl", "breakfast", 500, 30),
-                    new MealSummaryDto(Guid.NewGuid(), "Salmon Potatoes", "dinner", 600, 35)
-                ],
-                ["sal"] =
-                [
-                    new MealSummaryDto(Guid.NewGuid(), "Salmon Potatoes", "dinner", 600, 35)
-                ]
-            });
+            catalog:
+            [
+                new MealSummaryDto(Guid.NewGuid(), "Chicken Rice", "lunch", 700, 45),
+                new MealSummaryDto(Guid.NewGuid(), "Oats Bowl", "breakfast", 500, 30),
+                new MealSummaryDto(Guid.NewGuid(), "Salmon Potatoes", "dinner", 600, 35)
+            ]);
         var viewModel = new MealSearchViewModel(
             plansClient,
             new InMemoryMealSearchContextStore
             {
                 Current = new MealSearchContext(new DateOnly(2026, 5, 26), "breakfast", "Oats Bowl")
             },
-            new RecordingNavigator());
+            new RecordingNavigator(),
+            new RejectingPromptService());
 
         await viewModel.LoadAsync();
         viewModel.SearchText = "sal";
-        await plansClient.WaitForQueryAsync("sal");
 
         var result = Assert.Single(viewModel.Meals);
         Assert.Equal("Salmon Potatoes", result.Name);
-        Assert.Equal(["", "sal"], plansClient.SearchQueries);
+        Assert.Equal(1, plansClient.CatalogCalls);
     }
 
     [Fact]
     public async Task ReplaceMealCommand_ShouldReplaceSelectedMealAndNavigateHome()
     {
         var selectedMeal = new MealSummaryDto(Guid.NewGuid(), "Chicken Rice", "lunch", 700, 45);
-        var plansClient = new FakePlansApiClient(new Dictionary<string, IReadOnlyList<MealSummaryDto>?>
-        {
-            [""] = [selectedMeal]
-        });
+        var plansClient = new FakePlansApiClient(catalog: [selectedMeal]);
         var navigator = new RecordingNavigator();
         var contextStore = new InMemoryMealSearchContextStore
         {
             Current = new MealSearchContext(new DateOnly(2026, 5, 26), "breakfast", "Oats Bowl")
         };
-        var viewModel = new MealSearchViewModel(plansClient, contextStore, navigator);
+        var viewModel = new MealSearchViewModel(plansClient, contextStore, navigator, new RejectingPromptService());
 
         await viewModel.LoadAsync();
         await viewModel.ReplaceMealCommand.ExecuteAsync(viewModel.Meals.Single());
@@ -62,6 +52,7 @@ public sealed class MealSearchViewModelTests
         Assert.Equal(new DateOnly(2026, 5, 26), plansClient.LastReplaceDate);
         Assert.Equal("breakfast", plansClient.LastReplaceSlotType);
         Assert.Equal(selectedMeal.Id, plansClient.LastReplaceMealId);
+        Assert.False(plansClient.LastDeleteLinkedShoppingLists);
         Assert.Equal("//home", navigator.LastRoute);
         Assert.Null(contextStore.Current);
     }
@@ -70,16 +61,13 @@ public sealed class MealSearchViewModelTests
     public async Task ReplaceMealCommand_ShouldPreserveContext_WhenNavigationFails()
     {
         var selectedMeal = new MealSummaryDto(Guid.NewGuid(), "Chicken Rice", "lunch", 700, 45);
-        var plansClient = new FakePlansApiClient(new Dictionary<string, IReadOnlyList<MealSummaryDto>?>
-        {
-            [""] = [selectedMeal]
-        });
+        var plansClient = new FakePlansApiClient(catalog: [selectedMeal]);
         var navigator = new ThrowingNavigator(new InvalidOperationException("Navigation failed."));
         var contextStore = new InMemoryMealSearchContextStore
         {
             Current = new MealSearchContext(new DateOnly(2026, 5, 26), "breakfast", "Oats Bowl")
         };
-        var viewModel = new MealSearchViewModel(plansClient, contextStore, navigator);
+        var viewModel = new MealSearchViewModel(plansClient, contextStore, navigator, new RejectingPromptService());
 
         await viewModel.LoadAsync();
         await viewModel.ReplaceMealCommand.ExecuteAsync(viewModel.Meals.Single());
@@ -90,14 +78,33 @@ public sealed class MealSearchViewModelTests
         Assert.Equal("breakfast", contextStore.Current.SlotType);
     }
 
+    [Fact]
+    public async Task ReplaceMealAfterConflict_ShouldPromptAndRetryWithDeleteFlag()
+    {
+        var selectedMeal = new MealSummaryDto(Guid.NewGuid(), "Chicken Rice", "lunch", 700, 45);
+        var plansClient = new FakePlansApiClient(catalog: [selectedMeal], throwConflictOnce: true);
+        var contextStore = new InMemoryMealSearchContextStore
+        {
+            Current = new MealSearchContext(new DateOnly(2026, 5, 26), "breakfast", "Oats Bowl")
+        };
+        var viewModel = new MealSearchViewModel(plansClient, contextStore, new RecordingNavigator(), new AcceptingPromptService());
+
+        await viewModel.LoadAsync();
+        await viewModel.ReplaceMealCommand.ExecuteAsync(viewModel.Meals.Single());
+
+        Assert.Equal([false, true], plansClient.ReplaceCalls);
+    }
+
     private sealed class FakePlansApiClient : IPlansApiClient
     {
-        private readonly IReadOnlyDictionary<string, IReadOnlyList<MealSummaryDto>?> _mealsByQuery;
-        private readonly Dictionary<string, TaskCompletionSource<bool>> _queryWaiters = [];
+        private readonly IReadOnlyList<MealSummaryDto> _catalog;
+        private readonly bool _throwConflictOnce;
+        private bool _conflictThrown;
 
-        public FakePlansApiClient(IReadOnlyDictionary<string, IReadOnlyList<MealSummaryDto>?> mealsByQuery)
+        public FakePlansApiClient(IReadOnlyList<MealSummaryDto> catalog, bool throwConflictOnce = false)
         {
-            _mealsByQuery = mealsByQuery;
+            _catalog = catalog;
+            _throwConflictOnce = throwConflictOnce;
         }
 
         public DateOnly? LastReplaceDate { get; private set; }
@@ -106,9 +113,13 @@ public sealed class MealSearchViewModelTests
 
         public Guid? LastReplaceMealId { get; private set; }
 
-        public List<string> SearchQueries { get; } = [];
+        public bool? LastDeleteLinkedShoppingLists { get; private set; }
 
-        public Task CopyDayAsync(DateOnly sourceDate, DateOnly targetDate, CancellationToken cancellationToken = default)
+        public int CatalogCalls { get; private set; }
+
+        public List<bool> ReplaceCalls { get; } = [];
+
+        public Task CopyDayAsync(DateOnly sourceDate, DateOnly targetDate, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -120,38 +131,35 @@ public sealed class MealSearchViewModelTests
 
         public Task<IReadOnlyList<MealSummaryDto>> SearchMealsAsync(string? query, CancellationToken cancellationToken = default)
         {
-            var normalizedQuery = query ?? string.Empty;
-            SearchQueries.Add(normalizedQuery);
-
-            if (_queryWaiters.TryGetValue(normalizedQuery, out var waiter))
-            {
-                waiter.TrySetResult(true);
-            }
-
-            return Task.FromResult(_mealsByQuery.TryGetValue(normalizedQuery, out var meals)
-                ? meals ?? []
-                : []);
+            throw new NotSupportedException();
         }
 
-        public Task ReplaceMealAsync(DateOnly date, string slotType, Guid mealId, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyList<MealSummaryDto>> GetMealCatalogAsync(CancellationToken cancellationToken = default)
         {
+            CatalogCalls++;
+            return Task.FromResult<IReadOnlyList<MealSummaryDto>>(_catalog);
+        }
+
+        public Task<MealDetailsDto> GetMealDetailsAsync(Guid mealId, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task ReplaceMealAsync(DateOnly date, string slotType, Guid mealId, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
+        {
+            ReplaceCalls.Add(deleteLinkedShoppingLists);
+            LastDeleteLinkedShoppingLists = deleteLinkedShoppingLists;
+
+            if (_throwConflictOnce && !_conflictThrown)
+            {
+                _conflictThrown = true;
+                throw new LinkedShoppingListsExistException();
+            }
+
             LastReplaceDate = date;
             LastReplaceSlotType = slotType;
             LastReplaceMealId = mealId;
             return Task.CompletedTask;
-        }
-
-        public async Task WaitForQueryAsync(string query)
-        {
-            if (SearchQueries.Contains(query))
-            {
-                return;
-            }
-
-            var waiter = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            _queryWaiters[query] = waiter;
-            var completedTask = await Task.WhenAny(waiter.Task, Task.Delay(TimeSpan.FromSeconds(2)));
-            Assert.True(completedTask == waiter.Task, $"Expected backend search query '{query}' to be issued.");
         }
     }
 
@@ -178,6 +186,22 @@ public sealed class MealSearchViewModelTests
         public Task GoToAsync(string route)
         {
             return Task.FromException(_exception);
+        }
+    }
+
+    private sealed class AcceptingPromptService : IUserPromptService
+    {
+        public Task<bool> ConfirmAsync(string title, string message, string accept, string cancel)
+        {
+            return Task.FromResult(true);
+        }
+    }
+
+    private sealed class RejectingPromptService : IUserPromptService
+    {
+        public Task<bool> ConfirmAsync(string title, string message, string accept, string cancel)
+        {
+            return Task.FromResult(false);
         }
     }
 }

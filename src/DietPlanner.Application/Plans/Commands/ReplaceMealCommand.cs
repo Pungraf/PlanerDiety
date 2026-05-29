@@ -1,21 +1,22 @@
 using DietPlanner.Application.Abstractions;
 using DietPlanner.Application.Shopping;
+using DietPlanner.Application.Shopping.Commands;
 using DietPlanner.Domain.Entities;
 using DietPlanner.Domain.Enums;
 
 namespace DietPlanner.Application.Plans.Commands;
 
-public sealed record ReplaceMealCommand(Guid UserId, DateOnly Date, MealSlotType SlotType, Guid MealId);
+public sealed record ReplaceMealCommand(Guid UserId, DateOnly Date, MealSlotType SlotType, Guid MealId, bool DeleteLinkedShoppingLists);
 
 public sealed class ReplaceMealHandler
 {
     private readonly IApplicationDbContext _dbContext;
-    private readonly IShoppingListSyncService _shoppingListSyncService;
+    private readonly DeleteShoppingListsForPlanHandler _deleteShoppingListsForPlanHandler;
 
-    public ReplaceMealHandler(IApplicationDbContext dbContext, IShoppingListSyncService shoppingListSyncService)
+    public ReplaceMealHandler(IApplicationDbContext dbContext, DeleteShoppingListsForPlanHandler deleteShoppingListsForPlanHandler)
     {
         _dbContext = dbContext;
-        _shoppingListSyncService = shoppingListSyncService;
+        _deleteShoppingListsForPlanHandler = deleteShoppingListsForPlanHandler;
     }
 
     public async Task<ReplaceMealResult?> HandleAsync(ReplaceMealCommand command, CancellationToken cancellationToken)
@@ -39,15 +40,46 @@ public sealed class ReplaceMealHandler
 
         if (slot is null)
         {
-            return null;
+            return ReplaceMealResult.NotFound();
+        }
+
+        var linkedLists = await _dbContext.ListShoppingListsByWeeklyPlanIdAsync(plan.Id, cancellationToken);
+        if (linkedLists.Count > 0 && !command.DeleteLinkedShoppingLists)
+        {
+            return ReplaceMealResult.LinkedShoppingListsExist();
+        }
+
+        if (linkedLists.Count > 0)
+        {
+            await _deleteShoppingListsForPlanHandler.DeleteAsync(new DeleteShoppingListsForPlanCommand(plan.Id), cancellationToken);
         }
 
         slot.ReplaceMeal(meal.Id);
-        await _shoppingListSyncService.SyncAsync(plan, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return new ReplaceMealResult(command.Date, command.SlotType, meal.Id);
+        return ReplaceMealResult.Success(command.Date, command.SlotType, meal.Id);
     }
 }
 
-public sealed record ReplaceMealResult(DateOnly Date, MealSlotType SlotType, Guid MealId);
+public enum PlanEditFailureReason
+{
+    NotFound = 1,
+    LinkedShoppingListsExist = 2
+}
+
+public sealed record ReplaceMealResult(
+    bool Succeeded,
+    DateOnly? Date,
+    MealSlotType? SlotType,
+    Guid? MealId,
+    PlanEditFailureReason? FailureReason)
+{
+    public static ReplaceMealResult Success(DateOnly date, MealSlotType slotType, Guid mealId)
+        => new(true, date, slotType, mealId, null);
+
+    public static ReplaceMealResult NotFound()
+        => new(false, null, null, null, PlanEditFailureReason.NotFound);
+
+    public static ReplaceMealResult LinkedShoppingListsExist()
+        => new(false, null, null, null, PlanEditFailureReason.LinkedShoppingListsExist);
+}

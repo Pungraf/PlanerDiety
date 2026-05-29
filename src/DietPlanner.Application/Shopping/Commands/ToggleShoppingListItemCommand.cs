@@ -3,7 +3,7 @@ using DietPlanner.Application.Shopping.Queries;
 
 namespace DietPlanner.Application.Shopping.Commands;
 
-public sealed record ToggleShoppingListItemCommand(Guid UserId, Guid ItemId);
+public sealed record ToggleShoppingListItemCommand(Guid UserId, Guid ShoppingListId, Guid ItemId);
 
 public sealed class ToggleShoppingListItemHandler
 {
@@ -24,8 +24,8 @@ public sealed class ToggleShoppingListItemHandler
             return null;
         }
 
-        var shoppingList = await _dbContext.FindShoppingListByWeeklyPlanIdAsync(plan.Id, cancellationToken);
-        if (shoppingList is null)
+        var shoppingList = await _dbContext.FindShoppingListByIdAsync(command.ShoppingListId, cancellationToken);
+        if (shoppingList is null || shoppingList.WeeklyPlanId != plan.Id)
         {
             return null;
         }
