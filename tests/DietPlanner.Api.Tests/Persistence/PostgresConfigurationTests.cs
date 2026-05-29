@@ -66,7 +66,8 @@ public class PostgresConfigurationTests
         var contents = File.ReadAllText(bootstrapperFile);
 
         contents.Should().Contain("await dbContext.Database.MigrateAsync(cancellationToken);");
-        contents.Should().Contain("if (hasMigrationHistory)");
+        contents.Should().Contain("return;");
+        contents.Should().Contain("await dbContext.Database.MigrateAsync(cancellationToken);");
     }
 
     [Fact]

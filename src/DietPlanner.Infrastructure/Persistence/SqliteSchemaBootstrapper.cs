@@ -99,12 +99,11 @@ public static class SqliteSchemaBootstrapper
                     await connection.CloseAsync();
                 }
             }
+
+            return;
         }
 
-        if (hasMigrationHistory)
-        {
-            await dbContext.Database.MigrateAsync(cancellationToken);
-        }
+        await dbContext.Database.MigrateAsync(cancellationToken);
     }
 
     private static async Task InitializeSqliteAsync(DietPlannerDbContext dbContext, CancellationToken cancellationToken)
