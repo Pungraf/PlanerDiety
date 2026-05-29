@@ -4,30 +4,54 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Recipe">
-    <CollectionView ItemsSource="{Binding Ingredients}">
-        <CollectionView.Header>
-            <VerticalStackLayout Padding="20" Spacing="12">
-                <Label FontSize="26" FontAttributes="Bold" Text="{Binding Name}" />
-                <Label Text="{Binding MacroSummary}" />
-                <Label FontAttributes="Bold" Text="Ingredients" />
+    <Grid RowDefinitions="Auto,*" Padding="20">
+        <VerticalStackLayout Spacing="12">
+            <Label FontSize="26" FontAttributes="Bold" Text="{Binding Name}" />
+            <Label Text="{Binding MacroSummary}" />
+        </VerticalStackLayout>
+
+        <Grid Grid.Row="1" Margin="0,16,0,0">
+            <VerticalStackLayout
+                HorizontalOptions="Center"
+                IsVisible="{Binding IsLoading}"
+                Spacing="12"
+                VerticalOptions="Center">
+                <ActivityIndicator IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}" />
+                <Label HorizontalTextAlignment="Center" Text="Loading recipe..." />
             </VerticalStackLayout>
-        </CollectionView.Header>
-        <CollectionView.ItemTemplate>
-            <DataTemplate>
-                <Grid Padding="20,8" ColumnDefinitions="*,Auto">
-                    <VerticalStackLayout>
-                        <Label FontAttributes="Bold" Text="{Binding Name}" />
-                        <Label Text="{Binding Category}" />
+
+            <VerticalStackLayout
+                IsVisible="{Binding HasError}"
+                Spacing="12"
+                VerticalOptions="Center">
+                <Label FontAttributes="Bold" HorizontalTextAlignment="Center" Text="Could not load recipe" />
+                <Label HorizontalTextAlignment="Center" Text="{Binding ErrorMessage}" />
+            </VerticalStackLayout>
+
+            <CollectionView IsVisible="{Binding HasContent}" ItemsSource="{Binding Ingredients}">
+                <CollectionView.Header>
+                    <VerticalStackLayout Spacing="12">
+                        <Label FontAttributes="Bold" Text="Ingredients" />
                     </VerticalStackLayout>
-                    <Label Grid.Column="1" Text="{Binding QuantityText}" VerticalOptions="Center" />
-                </Grid>
-            </DataTemplate>
-        </CollectionView.ItemTemplate>
-        <CollectionView.Footer>
-            <VerticalStackLayout Padding="20" Spacing="8">
-                <Label FontAttributes="Bold" Text="Preparation" />
-                <Label Text="{Binding Description}" LineBreakMode="WordWrap" />
-            </VerticalStackLayout>
-        </CollectionView.Footer>
-    </CollectionView>
+                </CollectionView.Header>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Padding="0,8" ColumnDefinitions="*,Auto">
+                            <VerticalStackLayout>
+                                <Label FontAttributes="Bold" Text="{Binding Name}" />
+                                <Label Text="{Binding Category}" />
+                            </VerticalStackLayout>
+                            <Label Grid.Column="1" Text="{Binding QuantityText}" VerticalOptions="Center" />
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+                <CollectionView.Footer>
+                    <VerticalStackLayout Padding="0,12,0,0" Spacing="8">
+                        <Label FontAttributes="Bold" Text="Preparation" />
+                        <Label Text="{Binding Description}" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
+                </CollectionView.Footer>
+            </CollectionView>
+        </Grid>
+    </Grid>
 </ContentPage>

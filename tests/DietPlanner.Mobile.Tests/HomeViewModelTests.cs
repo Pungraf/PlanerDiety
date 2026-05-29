@@ -117,6 +117,63 @@ public sealed class HomeViewModelTests
     }
 
     [Fact]
+    public async Task OpenMealDetailsCommand_ShouldNotNavigate_WhenMealIdIsMissing()
+    {
+        var plansClient = new FakePlansApiClient(
+            new CurrentPlanDto(
+                Guid.NewGuid(),
+                "active",
+                "2026-05-26",
+                [
+                    new PlanDayDto(
+                        "2026-05-26",
+                        [
+                            new PlanMealSlotDto("breakfast", null, "Choose meal", 0, 0)
+                        ])
+                ]));
+        var navigator = new RecordingNavigator();
+        var mealDetailsStore = new InMemoryMealDetailsContextStore();
+        var viewModel = new HomeViewModel(plansClient, navigator, new InMemoryMealSearchContextStore(), mealDetailsStore);
+
+        await viewModel.LoadAsync();
+        await viewModel.OpenMealDetailsCommand.ExecuteAsync(viewModel.SelectedDay!.Meals.First());
+
+        Assert.Null(navigator.LastRoute);
+        Assert.Null(mealDetailsStore.Current);
+        Assert.Equal("Recipe details are not available for this meal.", viewModel.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task OpenMealDetailsCommand_ShouldNotCrash_WhenNavigationThrows()
+    {
+        var mealId = Guid.NewGuid();
+        var plansClient = new FakePlansApiClient(
+            new CurrentPlanDto(
+                Guid.NewGuid(),
+                "active",
+                "2026-05-26",
+                [
+                    new PlanDayDto(
+                        "2026-05-26",
+                        [
+                            new PlanMealSlotDto("breakfast", mealId, "Oats Bowl", 500, 30)
+                        ])
+                ]));
+        var navigator = new ThrowingNavigator(new InvalidOperationException("Navigation failed."));
+        var mealDetailsStore = new InMemoryMealDetailsContextStore();
+        var viewModel = new HomeViewModel(plansClient, navigator, new InMemoryMealSearchContextStore(), mealDetailsStore);
+
+        await viewModel.LoadAsync();
+
+        var exception = await Record.ExceptionAsync(
+            async () => await viewModel.OpenMealDetailsCommand.ExecuteAsync(viewModel.SelectedDay!.Meals.First()));
+
+        Assert.Null(exception);
+        Assert.Null(mealDetailsStore.Current);
+        Assert.Equal("Could not open recipe details.", viewModel.ErrorMessage);
+    }
+
+    [Fact]
     public async Task LoadAsync_ShouldRejectNonIsoApiDates()
     {
         using var cultureScope = new CultureScope(new CultureInfo("pl-PL"));
@@ -245,6 +302,21 @@ public sealed class HomeViewModelTests
         {
             LastRoute = route;
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class ThrowingNavigator : IAppNavigator
+    {
+        private readonly Exception _exception;
+
+        public ThrowingNavigator(Exception exception)
+        {
+            _exception = exception;
+        }
+
+        public Task GoToAsync(string route)
+        {
+            throw _exception;
         }
     }
 

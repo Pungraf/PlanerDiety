@@ -14,6 +14,7 @@ public sealed class MealDetailsViewModel : INotifyPropertyChanged
     private int _protein;
     private string _description = string.Empty;
     private string? _errorMessage;
+    private bool _isLoading;
 
     public MealDetailsViewModel(IPlansApiClient plansApiClient, IMealDetailsContextStore contextStore)
     {
@@ -73,6 +74,18 @@ public sealed class MealDetailsViewModel : INotifyPropertyChanged
 
     public string MacroSummary => $"{Kcal} kcal • {Protein} g protein";
 
+    public bool IsLoading
+    {
+        get => _isLoading;
+        private set
+        {
+            if (_isLoading == value) return;
+            _isLoading = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasContent));
+        }
+    }
+
     public string? ErrorMessage
     {
         get => _errorMessage;
@@ -81,28 +94,49 @@ public sealed class MealDetailsViewModel : INotifyPropertyChanged
             if (_errorMessage == value) return;
             _errorMessage = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(HasError));
+            OnPropertyChanged(nameof(HasContent));
         }
     }
 
+    public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
+
+    public bool HasContent => !IsLoading && !HasError;
+
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
-        var mealId = _contextStore.Current?.MealId;
-        if (mealId is null)
+        ErrorMessage = null;
+        IsLoading = true;
+
+        try
         {
-            ErrorMessage = "No meal selected.";
-            return;
+            var mealId = _contextStore.Current?.MealId;
+            if (mealId is null)
+            {
+                ErrorMessage = "Could not load recipe details.";
+                return;
+            }
+
+            var details = await _plansApiClient.GetMealDetailsAsync(mealId.Value, cancellationToken);
+            Name = details.Name;
+            Kcal = details.Kcal;
+            Protein = details.Protein;
+            Description = details.Description;
+
+            Ingredients.Clear();
+            foreach (var ingredient in details.Ingredients.Select(i => new MealDetailsIngredientViewModel(i.Name, i.Quantity, i.Unit, i.Category)))
+            {
+                Ingredients.Add(ingredient);
+            }
         }
-
-        var details = await _plansApiClient.GetMealDetailsAsync(mealId.Value, cancellationToken);
-        Name = details.Name;
-        Kcal = details.Kcal;
-        Protein = details.Protein;
-        Description = details.Description;
-
-        Ingredients.Clear();
-        foreach (var ingredient in details.Ingredients.Select(i => new MealDetailsIngredientViewModel(i.Name, i.Quantity, i.Unit, i.Category)))
+        catch (Exception)
         {
-            Ingredients.Add(ingredient);
+            ErrorMessage = "Could not load recipe details.";
+            Ingredients.Clear();
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 

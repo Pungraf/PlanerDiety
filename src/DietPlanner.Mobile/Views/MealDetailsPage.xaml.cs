@@ -15,6 +15,13 @@ public partial class MealDetailsPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await _viewModel.LoadAsync();
+        try
+        {
+            await _viewModel.LoadAsync();
+        }
+        catch
+        {
+            // Final safety net: expected failures should already be absorbed in the viewmodel.
+        }
     }
 }

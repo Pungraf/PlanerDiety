@@ -172,13 +172,24 @@ public sealed class HomeViewModel : INotifyPropertyChanged
 
     private async Task OpenMealDetailsAsync(HomeMealSlotViewModel? slot)
     {
+        ErrorMessage = null;
+
         if (slot?.MealId is null)
         {
+            ErrorMessage = "Recipe details are not available for this meal.";
             return;
         }
 
-        _mealDetailsContextStore.Current = new MealDetailsContext(slot.MealId.Value);
-        await _navigator.GoToAsync("meal-details");
+        try
+        {
+            _mealDetailsContextStore.Current = new MealDetailsContext(slot.MealId.Value);
+            await _navigator.GoToAsync("meal-details");
+        }
+        catch (Exception)
+        {
+            _mealDetailsContextStore.Current = null;
+            ErrorMessage = "Could not open recipe details.";
+        }
     }
 
     private static HomeDayViewModel MapDay(PlanDayDto day)
