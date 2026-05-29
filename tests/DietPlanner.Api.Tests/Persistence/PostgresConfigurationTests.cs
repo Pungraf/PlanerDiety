@@ -95,6 +95,30 @@ public class PostgresConfigurationTests
     }
 
     [Fact]
+    public void DatabaseBootstrapper_ShouldHandlePartialPostgresMigrationHistory()
+    {
+        var repositoryRoot = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            ".."));
+        var bootstrapperFile = Path.Combine(
+            repositoryRoot,
+            "src",
+            "DietPlanner.Infrastructure",
+            "Persistence",
+            "SqliteSchemaBootstrapper.cs");
+
+        var contents = File.ReadAllText(bootstrapperFile);
+
+        contents.Should().Contain("ReadAppliedMigrationsAsync");
+        contents.Should().Contain("!appliedMigrations.Contains(BaselineMigrationId, StringComparer.Ordinal)");
+        contents.Should().Contain("await StampAppliedMigrationsAsync(connection, providerName, dbContext.Database.GetMigrations(), cancellationToken);");
+    }
+
+    [Fact]
     public void DatabaseBootstrapper_ShouldUsePostgresCompatibleParameterPlaceholders()
     {
         var repositoryRoot = Path.GetFullPath(Path.Combine(

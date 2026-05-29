@@ -43,11 +43,15 @@ public static class SqliteSchemaBootstrapper
 
         bool hasMigrationHistory;
         bool hasApplicationTables;
+        IReadOnlyCollection<string> appliedMigrations;
 
         try
         {
             hasMigrationHistory = await TableExistsAsync(connection, providerName, "__EFMigrationsHistory", cancellationToken);
             hasApplicationTables = await HasApplicationTablesAsync(connection, providerName, cancellationToken);
+            appliedMigrations = hasMigrationHistory
+                ? await ReadAppliedMigrationsAsync(connection, cancellationToken)
+                : [];
         }
         finally
         {
@@ -90,6 +94,29 @@ public static class SqliteSchemaBootstrapper
 
             try
             {
+                await StampAppliedMigrationsAsync(connection, providerName, dbContext.Database.GetMigrations(), cancellationToken);
+            }
+            finally
+            {
+                if (shouldCloseConnection)
+                {
+                    await connection.CloseAsync();
+                }
+            }
+
+            return;
+        }
+
+        if (hasApplicationTables && !appliedMigrations.Contains(BaselineMigrationId, StringComparer.Ordinal))
+        {
+            if (shouldCloseConnection)
+            {
+                await connection.OpenAsync(cancellationToken);
+            }
+
+            try
+            {
+                await UpgradeLegacyPostgresSchemaAsync(connection, providerName, cancellationToken);
                 await StampAppliedMigrationsAsync(connection, providerName, dbContext.Database.GetMigrations(), cancellationToken);
             }
             finally
@@ -274,6 +301,28 @@ public static class SqliteSchemaBootstrapper
             """;
 
         await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task<IReadOnlyCollection<string>> ReadAppliedMigrationsAsync(
+        DbConnection connection,
+        CancellationToken cancellationToken)
+    {
+        var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT "MigrationId"
+            FROM "__EFMigrationsHistory"
+            ORDER BY "MigrationId";
+            """;
+
+        var migrationIds = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            migrationIds.Add(reader.GetString(0));
+        }
+
+        return migrationIds;
     }
 
     private static Task StampBaselineMigrationAsync(
