@@ -46,6 +46,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ReplaceMealHandler>();
         services.AddScoped<CopyDayHandler>();
         services.AddScoped<SearchMealsHandler>();
+        services.AddScoped<GetMealDetailsHandler>();
         services.AddScoped<ListShoppingListsHandler>();
         services.AddScoped<CreateShoppingListHandler>();
         services.AddScoped<GetShoppingListDetailsHandler>();

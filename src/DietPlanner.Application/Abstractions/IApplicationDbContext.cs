@@ -19,6 +19,8 @@ public interface IApplicationDbContext
 
     Task<Meal?> FindMealByIdAsync(Guid mealId, CancellationToken cancellationToken);
 
+    Task<Meal?> FindMealDetailsByIdAsync(Guid mealId, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<Meal>> FindMealsByIdsAsync(IReadOnlyCollection<Guid> mealIds, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<Ingredient>> FindIngredientsByIdsAsync(IReadOnlyCollection<Guid> ingredientIds, CancellationToken cancellationToken);
