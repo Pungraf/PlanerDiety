@@ -46,6 +46,54 @@ public sealed class ShoppingListCreateViewModelTests
     }
 
     [Fact]
+    public async Task SelectSelectedDaysPreset_ShouldShowDaySelectionStep()
+    {
+        var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
+        var viewModel = new ShoppingListCreateViewModel(api, new RecordingNavigator());
+
+        await viewModel.LoadAsync();
+        viewModel.SelectPresetCommand.Execute(ShoppingListCreatePreset.SelectedDays);
+
+        Assert.False(viewModel.IsPresetStep);
+        Assert.True(viewModel.IsDaySelectionStep);
+        Assert.False(viewModel.IsBuilderStep);
+    }
+
+    [Fact]
+    public async Task ContinueSelectedDays_ShouldPreselectOnlySelectedDaysAndShowBuilder()
+    {
+        var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
+        var viewModel = new ShoppingListCreateViewModel(api, new RecordingNavigator());
+
+        await viewModel.LoadAsync();
+        viewModel.SelectPresetCommand.Execute(ShoppingListCreatePreset.SelectedDays);
+        viewModel.Days.First().IsSelected = true;
+
+        await viewModel.ContinueCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.IsPresetStep);
+        Assert.False(viewModel.IsDaySelectionStep);
+        Assert.True(viewModel.IsBuilderStep);
+        Assert.All(viewModel.Days.First().Meals.SelectMany(meal => meal.Ingredients), ingredient => Assert.True(ingredient.IsSelected));
+        Assert.All(viewModel.Days.Skip(1).SelectMany(day => day.Meals).SelectMany(meal => meal.Ingredients), ingredient => Assert.False(ingredient.IsSelected));
+    }
+
+    [Fact]
+    public async Task ContinueSelectedDays_ShouldRequireAtLeastOneDay()
+    {
+        var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
+        var viewModel = new ShoppingListCreateViewModel(api, new RecordingNavigator());
+
+        await viewModel.LoadAsync();
+        viewModel.SelectPresetCommand.Execute(ShoppingListCreatePreset.SelectedDays);
+
+        await viewModel.ContinueCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsDaySelectionStep);
+        Assert.Equal("Select at least one day.", viewModel.ErrorMessage);
+    }
+
+    [Fact]
     public async Task SaveAsync_ShouldSendSelectedIngredientsAndNavigateBackToIndex()
     {
         var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
@@ -103,6 +151,23 @@ public sealed class ShoppingListCreateViewModelTests
     }
 
     [Fact]
+    public async Task SaveAsync_ShouldAllowCreateAgain_WhenSelectionChangesAfterNavigationFailure()
+    {
+        var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
+        var navigator = new RecordingNavigator(navigationException: new InvalidOperationException("Navigation failed."));
+        var viewModel = new ShoppingListCreateViewModel(api, navigator);
+
+        await viewModel.LoadAsync();
+        await viewModel.SelectPresetCommand.ExecuteAsync(ShoppingListCreatePreset.FullWeek);
+
+        await viewModel.SaveAsync();
+        viewModel.Days.First().Meals.First().Ingredients.Single().IsSelected = false;
+        await viewModel.SaveAsync();
+
+        Assert.Equal(2, api.CreateCalls);
+    }
+
+    [Fact]
     public void ShoppingListCreatePage_ShouldContainPresetAndSaveBindings()
     {
         var pageXamlPath = Path.GetFullPath(Path.Combine(
@@ -121,6 +186,8 @@ public sealed class ShoppingListCreateViewModelTests
 
         Assert.Contains("IsVisible=\"{Binding IsPresetStep}\"", xaml);
         Assert.Contains("SelectPresetCommand", xaml);
+        Assert.Contains("IsVisible=\"{Binding IsDaySelectionStep}\"", xaml);
+        Assert.Contains("ContinueCommand", xaml);
         Assert.Contains("IsVisible=\"{Binding IsBuilderStep}\"", xaml);
         Assert.Contains("SaveCommand", xaml);
     }
