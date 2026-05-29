@@ -45,4 +45,27 @@ public class PostgresConfigurationTests
         script.Should().NotContain("[Email]");
         script.Should().NotContain("[GoogleSubject]");
     }
+
+    [Fact]
+    public void DatabaseBootstrapper_ShouldUseMigrations_ForNonSqliteProviders()
+    {
+        var repositoryRoot = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            ".."));
+        var bootstrapperFile = Path.Combine(
+            repositoryRoot,
+            "src",
+            "DietPlanner.Infrastructure",
+            "Persistence",
+            "SqliteSchemaBootstrapper.cs");
+
+        var contents = File.ReadAllText(bootstrapperFile);
+
+        contents.Should().Contain("await dbContext.Database.MigrateAsync(cancellationToken);");
+        contents.Should().NotContain("await dbContext.Database.EnsureCreatedAsync(cancellationToken);");
+    }
 }

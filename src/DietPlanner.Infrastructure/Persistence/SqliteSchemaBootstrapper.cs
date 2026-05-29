@@ -16,7 +16,7 @@ public static class SqliteSchemaBootstrapper
 
         if (!string.Equals(dbContext.Database.ProviderName, "Microsoft.EntityFrameworkCore.Sqlite", StringComparison.Ordinal))
         {
-            await dbContext.Database.EnsureCreatedAsync(cancellationToken);
+            await dbContext.Database.MigrateAsync(cancellationToken);
             return;
         }
 
