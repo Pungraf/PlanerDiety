@@ -28,12 +28,19 @@
                                 <Label Text="{Binding CreatedAt}" />
                                 <Label Text="{Binding ItemCount, StringFormat='Items: {0}'}" />
                             </VerticalStackLayout>
-                            <Button
+                            <VerticalStackLayout
                                 Grid.Column="1"
                                 VerticalOptions="Center"
-                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectListCommand}"
-                                CommandParameter="{Binding .}"
-                                Text="Open" />
+                                Spacing="8">
+                                <Button
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectListCommand}"
+                                    CommandParameter="{Binding .}"
+                                    Text="Open" />
+                                <Button
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteListCommand}"
+                                    CommandParameter="{Binding .}"
+                                    Text="Delete" />
+                            </VerticalStackLayout>
                         </Grid>
                     </Border>
                 </DataTemplate>
@@ -55,6 +62,10 @@
                 <VerticalStackLayout Padding="24" Spacing="16">
                     <Label FontAttributes="Bold" FontSize="28" Text="{Binding SelectedList.Name}" />
                     <Label Text="Check items off as you shop." />
+                    <Button
+                        Command="{Binding DeleteSelectedListCommand}"
+                        HorizontalOptions="Start"
+                        Text="Delete list" />
                     <Label TextColor="IndianRed" Text="{Binding ErrorMessage}" />
                 </VerticalStackLayout>
             </CollectionView.Header>

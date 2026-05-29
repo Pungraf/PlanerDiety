@@ -109,6 +109,27 @@ public sealed class ShoppingListViewModelTests
         Assert.Equal(1, prompts.ConfirmCalls);
     }
 
+    [Fact]
+    public void ShoppingListPage_ShouldBindDeleteCommandsForIndexAndDetails()
+    {
+        var pageXamlPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "src",
+            "DietPlanner.Mobile",
+            "Views",
+            "ShoppingListPage.xaml"));
+
+        var xaml = File.ReadAllText(pageXamlPath);
+
+        Assert.Contains("DeleteListCommand", xaml);
+        Assert.Contains("DeleteSelectedListCommand", xaml);
+    }
+
     private sealed class FakeShoppingListApiClient : IShoppingListApiClient
     {
         private readonly List<ShoppingListSummaryDto> _lists;
