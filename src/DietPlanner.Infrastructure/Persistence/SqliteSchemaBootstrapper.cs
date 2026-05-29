@@ -171,21 +171,24 @@ public static class SqliteSchemaBootstrapper
         CancellationToken cancellationToken)
     {
         var command = connection.CreateCommand();
+        var parameterName = string.Equals(providerName, SqliteProviderName, StringComparison.Ordinal)
+            ? "$name"
+            : "@name";
         command.CommandText = string.Equals(providerName, SqliteProviderName, StringComparison.Ordinal)
-            ? """
-              SELECT COUNT(*)
-              FROM sqlite_master
-              WHERE type = 'table' AND name = $name;
-              """
-            : """
-              SELECT COUNT(*)
-              FROM information_schema.tables
-              WHERE table_schema = current_schema()
-                AND table_name = $name;
-              """;
+            ? $"""
+               SELECT COUNT(*)
+               FROM sqlite_master
+               WHERE type = 'table' AND name = {parameterName};
+               """
+            : $"""
+               SELECT COUNT(*)
+               FROM information_schema.tables
+               WHERE table_schema = current_schema()
+                 AND table_name = {parameterName};
+               """;
 
         var parameter = command.CreateParameter();
-        parameter.ParameterName = "$name";
+        parameter.ParameterName = parameterName;
         parameter.Value = tableName;
         command.Parameters.Add(parameter);
 
