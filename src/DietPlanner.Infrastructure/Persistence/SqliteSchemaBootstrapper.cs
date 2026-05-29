@@ -286,6 +286,16 @@ public static class SqliteSchemaBootstrapper
                     SELECT 1
                     FROM information_schema.tables
                     WHERE table_schema = current_schema()
+                      AND table_name = 'Meals'
+                ) THEN
+                    ALTER TABLE "Meals"
+                    ADD COLUMN IF NOT EXISTS "Description" text NOT NULL DEFAULT '';
+                END IF;
+
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = current_schema()
                       AND table_name = 'ShoppingLists'
                 ) THEN
                     ALTER TABLE "ShoppingLists"

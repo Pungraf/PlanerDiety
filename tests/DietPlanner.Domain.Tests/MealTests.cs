@@ -31,4 +31,12 @@ public class MealTests
 
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
+
+    [Fact]
+    public void Constructor_ShouldAssignDescription()
+    {
+        var meal = new Meal(Guid.NewGuid(), "Owsianka", MealType.Breakfast, false, 450, 25, "Wymieszaj skladniki.");
+
+        meal.Description.Should().Be("Wymieszaj skladniki.");
+    }
 }

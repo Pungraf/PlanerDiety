@@ -31,14 +31,14 @@ internal static class TestData
     {
         var addIngredient = typeof(Meal).GetMethod("AddIngredient", BindingFlags.Instance | BindingFlags.NonPublic)!;
 
-        var breakfast = new Meal(BreakfastMealId, "Berry Oat Bowl", MealType.Breakfast, false, 420, 18);
+        var breakfast = new Meal(BreakfastMealId, "Berry Oat Bowl", MealType.Breakfast, false, 420, 18, "Stir oats with yogurt and berries.");
         addIngredient.Invoke(breakfast, [new MealIngredient(BreakfastMealId, OatsIngredientId, 80, "g", "Pantry")]);
 
-        var lunch = new Meal(LunchMealId, "Chicken Tomato Pasta", MealType.Lunch, false, 610, 35);
+        var lunch = new Meal(LunchMealId, "Chicken Tomato Pasta", MealType.Lunch, false, 610, 35, "Cook pasta and toss with chicken.");
         addIngredient.Invoke(lunch, [new MealIngredient(LunchMealId, ChickenIngredientId, 140, "g", "Meat")]);
         addIngredient.Invoke(lunch, [new MealIngredient(LunchMealId, TomatoIngredientId, 120, "g", "Produce")]);
 
-        var dinner = new Meal(DinnerMealId, "Tomato Soup", MealType.Dinner, false, 320, 12);
+        var dinner = new Meal(DinnerMealId, "Tomato Soup", MealType.Dinner, false, 320, 12, "Simmer tomatoes and blend until smooth.");
         addIngredient.Invoke(dinner, [new MealIngredient(DinnerMealId, TomatoIngredientId, 180, "g", "Produce")]);
 
         return [breakfast, lunch, dinner];

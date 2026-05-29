@@ -23,6 +23,7 @@ public class GetMealDetailsTests
         payload.Type.Should().Be("breakfast");
         payload.Kcal.Should().Be(420);
         payload.Protein.Should().Be(18);
+        payload.Description.Should().Be("Stir oats with yogurt and berries.");
         payload.Ingredients.Should().ContainSingle(x =>
             x.Name == "Oats" &&
             x.Quantity == 80m &&

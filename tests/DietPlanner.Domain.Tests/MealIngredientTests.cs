@@ -21,4 +21,13 @@ public class MealIngredientTests
 
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void Constructor_ShouldAllowZeroQuantityForNonShoppingIngredient()
+    {
+        var ingredient = new MealIngredient(Guid.NewGuid(), Guid.NewGuid(), 0m, "g", "Przyprawy");
+
+        ingredient.Quantity.Should().Be(0m);
+        ingredient.Unit.Should().Be("g");
+    }
 }

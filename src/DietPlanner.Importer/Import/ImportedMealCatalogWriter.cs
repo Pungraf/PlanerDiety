@@ -36,7 +36,8 @@ public sealed class ImportedMealCatalogWriter
                 importedMeal.Type,
                 importedMeal.IsDessert,
                 importedMeal.Kcal,
-                importedMeal.Protein));
+                importedMeal.Protein,
+                importedMeal.Description));
 
             foreach (var importedIngredient in importedMeal.Ingredients)
             {

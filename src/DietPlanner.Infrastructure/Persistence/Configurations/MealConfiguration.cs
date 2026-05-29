@@ -17,6 +17,7 @@ public sealed class MealConfiguration : IEntityTypeConfiguration<Meal>
         builder.Property(x => x.IsDessert).IsRequired();
         builder.Property(x => x.Kcal).IsRequired();
         builder.Property(x => x.Protein).IsRequired();
+        builder.Property(x => x.Description).IsRequired().HasDefaultValue(string.Empty);
 
         builder.HasMany(x => x.Ingredients)
             .WithOne()

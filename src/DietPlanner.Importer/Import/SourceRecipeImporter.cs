@@ -36,20 +36,21 @@ public sealed class SourceRecipeImporter
         var recipeRows = await ReadRecipeRowsAsync(recipesReader, ingredientCategories, cancellationToken);
 
         var meals = recipeRows
-            .GroupBy(row => new MealKey(row.Name, row.Type, row.IsDessert, row.Kcal, row.Protein))
+            .GroupBy(row => new MealKey(row.Name, row.Type, row.IsDessert, row.Kcal, row.Protein, row.Description))
             .Select(group => new ImportedMeal(
                 group.Key.Name,
                 group.Key.Type,
                 group.Key.IsDessert,
                 group.Key.Kcal,
                 group.Key.Protein,
+                group.Key.Description,
                 group.GroupBy(row => new MealIngredientKey(row.IngredientName, row.Unit, row.Category))
-                .Select(ingredientGroup => new ImportedMealIngredient(
-                    ingredientGroup.Key.Name,
-                    ingredientGroup.Sum(row => row.Quantity),
-                    ingredientGroup.Key.Unit,
-                    ingredientGroup.Key.Category))
-                .ToList()))
+                    .Select(ingredientGroup => new ImportedMealIngredient(
+                        ingredientGroup.Key.Name,
+                        ingredientGroup.Sum(row => row.Quantity),
+                        ingredientGroup.Key.Unit,
+                        ingredientGroup.Key.Category))
+                    .ToList()))
             .ToList();
 
         var ingredients = recipeRows
@@ -140,7 +141,8 @@ public sealed class SourceRecipeImporter
                     ParseMealType(GetRequiredValue(columns, rowNumber, 6, ExpectedRecipeHeader), rowNumber),
                     ParseBoolean(GetRequiredValue(columns, rowNumber, 7, ExpectedRecipeHeader), rowNumber, ExpectedRecipeHeader[7]),
                     ParseInt(GetRequiredValue(columns, rowNumber, 3, ExpectedRecipeHeader), rowNumber, ExpectedRecipeHeader[3]),
-                    ParseInt(GetRequiredValue(columns, rowNumber, 4, ExpectedRecipeHeader), rowNumber, ExpectedRecipeHeader[4]));
+                    ParseInt(GetRequiredValue(columns, rowNumber, 4, ExpectedRecipeHeader), rowNumber, ExpectedRecipeHeader[4]),
+                    GetRequiredValue(columns, rowNumber, 5, ExpectedRecipeHeader));
             }
 
             if (currentMeal is null)
@@ -160,6 +162,7 @@ public sealed class SourceRecipeImporter
                 currentMeal.IsDessert,
                 currentMeal.Kcal,
                 currentMeal.Protein,
+                currentMeal.Description,
                 ingredientName,
                 quantity,
                 unit,
@@ -241,21 +244,27 @@ public sealed class SourceRecipeImporter
             var quantityText = normalizedValue[..separatorIndex];
             var unit = normalizedValue[(separatorIndex + 1)..].Trim();
 
-            if (decimal.TryParse(quantityText, NumberStyles.Number, CultureInfo.InvariantCulture, out var quantity))
+            if (decimal.TryParse(quantityText, NumberStyles.Number, CultureInfo.InvariantCulture, out var quantity)
+                && string.Equals(unit, "g", StringComparison.OrdinalIgnoreCase))
             {
-                return (quantity, unit);
+                return (quantity, "g");
+            }
+
+            if (decimal.TryParse(quantityText, NumberStyles.Number, CultureInfo.InvariantCulture, out _))
+            {
+                return (0m, "g");
             }
         }
 
         if (!char.IsDigit(normalizedValue[0]))
         {
-            return (1m, normalizedValue);
+            return (0m, "g");
         }
 
         throw new FormatException($"Invalid CSV row {rowNumber}, column 'Ilość', value '{value}'.");
     }
 
-    private sealed record RecipeContext(string Name, MealType Type, bool IsDessert, int Kcal, int Protein);
+    private sealed record RecipeContext(string Name, MealType Type, bool IsDessert, int Kcal, int Protein, string Description);
 
     private sealed record SourceRecipeRow(
         string Name,
@@ -263,13 +272,13 @@ public sealed class SourceRecipeImporter
         bool IsDessert,
         int Kcal,
         int Protein,
+        string Description,
         string IngredientName,
         decimal Quantity,
         string Unit,
         string Category);
 
-    private sealed record MealKey(string Name, MealType Type, bool IsDessert, int Kcal, int Protein);
+    private sealed record MealKey(string Name, MealType Type, bool IsDessert, int Kcal, int Protein, string Description);
     private sealed record MealIngredientKey(string Name, string Unit, string Category);
-
     private sealed record IngredientKey(string Name, string Unit);
 }

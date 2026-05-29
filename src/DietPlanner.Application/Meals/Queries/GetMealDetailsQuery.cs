@@ -51,7 +51,7 @@ public sealed record MealDetailsDto(
             meal.Type.ToString().ToLowerInvariant(),
             meal.Kcal,
             meal.Protein,
-            string.Empty,
+            meal.Description,
             meal.Ingredients
                 .Select(ingredient => new MealDetailsIngredientDto(
                     ingredientsById.TryGetValue(ingredient.IngredientId, out var ingredientEntity)

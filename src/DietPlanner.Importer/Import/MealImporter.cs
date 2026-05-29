@@ -60,6 +60,7 @@ public sealed class MealImporter
                 group.Key.IsDessert,
                 group.Key.Kcal,
                 group.Key.Protein,
+                string.Empty,
                 group.Select(row => new ImportedMealIngredient(
                     row.IngredientName,
                     row.Quantity,
@@ -170,6 +171,7 @@ public sealed record ImportedMeal(
     bool IsDessert,
     int Kcal,
     int Protein,
+    string Description,
     IReadOnlyList<ImportedMealIngredient> Ingredients);
 
 public sealed record ImportedMealIngredient(

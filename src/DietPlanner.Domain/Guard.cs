@@ -42,6 +42,16 @@ internal static class Guard
         return value;
     }
 
+    public static decimal AgainstNegative(decimal value, string paramName)
+    {
+        if (value < 0)
+        {
+            throw new ArgumentOutOfRangeException(paramName, "Value cannot be negative.");
+        }
+
+        return value;
+    }
+
     public static TEnum AgainstUndefinedEnum<TEnum>(TEnum value, string paramName)
         where TEnum : struct, Enum
     {

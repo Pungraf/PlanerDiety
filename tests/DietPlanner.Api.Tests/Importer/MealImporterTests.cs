@@ -50,6 +50,7 @@ Ser twarogowy półtłusty,Nabiał
 
             meal.Name.Should().Be("Bajgiel z domowym twarożkiem");
             meal.Type.Should().Be(MealType.Breakfast);
+            meal.Description.Should().Be("Opis");
             meal.Ingredients.Should().HaveCount(2);
 
             dbContext.MealIngredients.Should().Contain(x => x.ShoppingCategory == "Pieczywo");
@@ -137,6 +138,7 @@ Ser twarogowy półtłusty,Nabiał
         bagel.IsDessert.Should().BeFalse();
         bagel.Kcal.Should().Be(410);
         bagel.Protein.Should().Be(33);
+        bagel.Description.Should().Be("Opis");
         bagel.Ingredients.Should().HaveCount(2);
         bagel.Ingredients.Should().Contain(x => x.IngredientName == "Bajgiel" && x.Quantity == 75m && x.Unit == "g" && x.Category == "Pieczywo");
         bagel.Ingredients.Should().Contain(x => x.IngredientName == "Ser twarogowy półtłusty" && x.Quantity == 125m && x.Unit == "g" && x.Category == "Nabiał");
@@ -148,19 +150,19 @@ Ser twarogowy półtłusty,Nabiał
     }
 
     [Fact]
-    public async Task ImportFromSourceCsvPair_ShouldPreserveQualitativeQuantitiesAsUnits()
+    public async Task ImportFromSourceCsvPair_ShouldKeepOnlyGramQuantitiesAsShoppingQuantities()
     {
         var recipesCsv = """
 Nazwa potrawy,Składnik,Ilość,Kcal,B,Wykonanie,Typ posiłku,Deser Tak/Nie,Nabiał
 Pasta jajeczna,Jajka,110 g,430,28,"Opis",Śniadanie,NIe,Tak
-,SĂłl,do smaku,,,,,,
-,SĹ‚odzidĹ‚o,opcjonalnie,,,,,,
+,Sól,do smaku,,,,,,
+,Mleko,50 ml,,,,,,
 """;
         var categoriesCsv = """
 Składnik,Kategoria
-Jajka,NabiaĹ‚
-SĂłl,Przyprawy
-SĹ‚odzidĹ‚o,SĹ‚odycze
+Jajka,Nabiał
+Sól,Przyprawy
+Mleko,Nabiał
 """;
         var importer = new SourceRecipeImporter();
 
@@ -170,8 +172,9 @@ SĹ‚odzidĹ‚o,SĹ‚odycze
             CancellationToken.None);
 
         var meal = result.Meals.Single();
-        meal.Ingredients.Should().Contain(x => x.IngredientName == "SĂłl" && x.Quantity == 1m && x.Unit == "do smaku" && x.Category == "Przyprawy");
-        meal.Ingredients.Should().Contain(x => x.IngredientName == "SĹ‚odzidĹ‚o" && x.Quantity == 1m && x.Unit == "opcjonalnie" && x.Category == "SĹ‚odycze");
+        meal.Ingredients.Should().Contain(x => x.IngredientName == "Jajka" && x.Quantity == 110m && x.Unit == "g" && x.Category == "Nabiał");
+        meal.Ingredients.Should().Contain(x => x.IngredientName == "Sól" && x.Quantity == 0m && x.Unit == "g" && x.Category == "Przyprawy");
+        meal.Ingredients.Should().Contain(x => x.IngredientName == "Mleko" && x.Quantity == 0m && x.Unit == "g" && x.Category == "Nabiał");
     }
 
     [Fact]

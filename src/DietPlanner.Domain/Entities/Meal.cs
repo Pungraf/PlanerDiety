@@ -18,9 +18,11 @@ public class Meal
 
     public int Protein { get; private set; }
 
+    public string Description { get; private set; }
+
     public IReadOnlyCollection<MealIngredient> Ingredients => _ingredients;
 
-    public Meal(Guid id, string name, MealType type, bool isDessert, int kcal, int protein)
+    public Meal(Guid id, string name, MealType type, bool isDessert, int kcal, int protein, string description = "")
     {
         Id = Guard.AgainstEmpty(id, nameof(id));
         Name = Guard.AgainstBlank(name, nameof(name));
@@ -28,6 +30,7 @@ public class Meal
         IsDessert = isDessert;
         Kcal = Guard.AgainstNegative(kcal, nameof(kcal));
         Protein = Guard.AgainstNegative(protein, nameof(protein));
+        Description = description?.Trim() ?? string.Empty;
     }
 
     internal void AddIngredient(MealIngredient ingredient)

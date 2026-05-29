@@ -16,7 +16,7 @@ public class MealIngredient
     {
         MealId = Guard.AgainstEmpty(mealId, nameof(mealId));
         IngredientId = Guard.AgainstEmpty(ingredientId, nameof(ingredientId));
-        Quantity = Guard.AgainstNonPositive(quantity, nameof(quantity));
+        Quantity = Guard.AgainstNegative(quantity, nameof(quantity));
         Unit = Guard.AgainstBlank(unit, nameof(unit));
         ShoppingCategory = Guard.AgainstBlank(shoppingCategory, nameof(shoppingCategory));
     }
