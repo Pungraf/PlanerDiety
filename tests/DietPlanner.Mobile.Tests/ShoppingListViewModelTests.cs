@@ -110,7 +110,73 @@ public sealed class ShoppingListViewModelTests
     }
 
     [Fact]
-    public void ShoppingListPage_ShouldBindDeleteCommandsForIndexAndDetails()
+    public async Task BackToLists_ShouldClearSelectionAndReturnToIndex()
+    {
+        var listId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var api = new FakeShoppingListApiClient(
+            lists:
+            [
+                new ShoppingListSummaryDto(listId, "Week groceries", "2026-05-29", 4)
+            ],
+            details: new ShoppingListDetailsDto(
+                listId,
+                "Week groceries",
+                [
+                    new ShoppingListSummaryItemDto(Guid.NewGuid(), "Milk", 2m, "l", false)
+                ]));
+        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), new RecordingPromptService(confirmResult: false));
+
+        await viewModel.LoadAsync();
+        await viewModel.SelectListAsync(viewModel.Lists.Single());
+
+        await viewModel.BackToListsAsync();
+
+        Assert.Null(viewModel.SelectedList);
+        Assert.Empty(viewModel.Items);
+        Assert.True(viewModel.ShowListPicker);
+        Assert.False(viewModel.ShowListDetails);
+    }
+
+    [Fact]
+    public async Task ToggleItem_ShouldPreserveSelectedDetailsState()
+    {
+        var listId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var itemId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var api = new FakeShoppingListApiClient(
+            lists:
+            [
+                new ShoppingListSummaryDto(listId, "Week groceries", "2026-05-29", 1)
+            ],
+            details: new ShoppingListDetailsDto(
+                listId,
+                "Week groceries",
+                [
+                    new ShoppingListSummaryItemDto(itemId, "Milk", 2m, "l", false)
+                ]),
+            toggledDetails: new ShoppingListDetailsDto(
+                listId,
+                "Week groceries",
+                [
+                    new ShoppingListSummaryItemDto(itemId, "Milk", 2m, "l", true)
+                ]));
+        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), new RecordingPromptService(confirmResult: false));
+
+        await viewModel.LoadAsync();
+        var selectedList = viewModel.Lists.Single();
+        await viewModel.SelectListAsync(selectedList);
+
+        await viewModel.ToggleItemAsync(viewModel.Items.Single());
+
+        Assert.Same(selectedList, viewModel.SelectedList);
+        Assert.True(viewModel.ShowListDetails);
+        Assert.False(viewModel.ShowListPicker);
+        var item = Assert.Single(viewModel.Items);
+        Assert.True(item.IsChecked);
+        Assert.Equal([itemId], api.ToggledItemIds);
+    }
+
+    [Fact]
+    public void ShoppingListPage_ShouldBindIndexDetailsCommands()
     {
         var pageXamlPath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
@@ -126,24 +192,31 @@ public sealed class ShoppingListViewModelTests
 
         var xaml = File.ReadAllText(pageXamlPath);
 
+        Assert.Contains("BackToListsCommand", xaml);
         Assert.Contains("DeleteListCommand", xaml);
         Assert.Contains("DeleteSelectedListCommand", xaml);
+        Assert.Contains("ToggleItemCommand", xaml);
     }
 
     private sealed class FakeShoppingListApiClient : IShoppingListApiClient
     {
         private readonly List<ShoppingListSummaryDto> _lists;
         private readonly ShoppingListDetailsDto _details;
+        private readonly ShoppingListDetailsDto _toggledDetails;
 
         public FakeShoppingListApiClient(
             IReadOnlyList<ShoppingListSummaryDto>? lists = null,
-            ShoppingListDetailsDto? details = null)
+            ShoppingListDetailsDto? details = null,
+            ShoppingListDetailsDto? toggledDetails = null)
         {
             _lists = lists?.ToList() ?? [];
             _details = details ?? new ShoppingListDetailsDto(Guid.Empty, string.Empty, []);
+            _toggledDetails = toggledDetails ?? _details;
         }
 
         public List<Guid> DeletedListIds { get; } = [];
+
+        public List<Guid> ToggledItemIds { get; } = [];
 
         public int ListCalls { get; private set; }
 
@@ -170,7 +243,10 @@ public sealed class ShoppingListViewModelTests
         }
 
         public Task<ShoppingListDetailsDto> ToggleItemAsync(Guid listId, Guid itemId, CancellationToken cancellationToken = default)
-            => Task.FromResult(_details);
+        {
+            ToggledItemIds.Add(itemId);
+            return Task.FromResult(_toggledDetails);
+        }
     }
 
     private sealed class RecordingNavigator : IAppNavigator

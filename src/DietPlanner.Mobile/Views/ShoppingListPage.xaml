@@ -60,6 +60,10 @@
             SelectionMode="None">
             <CollectionView.Header>
                 <VerticalStackLayout Padding="24" Spacing="16">
+                    <Button
+                        Command="{Binding BackToListsCommand}"
+                        HorizontalOptions="Start"
+                        Text="Back to lists" />
                     <Label FontAttributes="Bold" FontSize="28" Text="{Binding SelectedList.Name}" />
                     <Label Text="Check items off as you shop." />
                     <Button

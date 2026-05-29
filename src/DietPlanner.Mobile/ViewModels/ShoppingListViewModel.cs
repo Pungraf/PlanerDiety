@@ -31,6 +31,7 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
         SelectListCommand = new AsyncCommand(item => SelectListAsync(item as ShoppingListSummaryViewModel));
         DeleteListCommand = new AsyncCommand(item => DeleteListAsync(item as ShoppingListSummaryViewModel));
         DeleteSelectedListCommand = new AsyncCommand(_ => DeleteSelectedListAsync());
+        BackToListsCommand = new AsyncCommand(_ => BackToListsAsync());
         OpenCreateCommand = new AsyncCommand(_ => _navigator.GoToAsync("shopping-list-create"));
     }
 
@@ -49,6 +50,8 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
     public AsyncCommand DeleteListCommand { get; }
 
     public AsyncCommand DeleteSelectedListCommand { get; }
+
+    public AsyncCommand BackToListsCommand { get; }
 
     public AsyncCommand OpenCreateCommand { get; }
 
@@ -234,6 +237,12 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
         {
             ErrorMessage = exception.Message;
         }
+    }
+
+    public Task BackToListsAsync(CancellationToken cancellationToken = default)
+    {
+        ClearSelection();
+        return Task.CompletedTask;
     }
 
     public Task DeleteSelectedListAsync(CancellationToken cancellationToken = default)
