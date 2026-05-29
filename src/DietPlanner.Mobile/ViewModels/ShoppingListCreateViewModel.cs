@@ -11,6 +11,7 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
 {
     private readonly IShoppingListApiClient _shoppingListApiClient;
     private readonly IAppNavigator _navigator;
+    private string? _errorMessage;
     private ShoppingListCreatePreset? _selectedPreset;
     private bool _isPresetStep = true;
 
@@ -48,6 +49,21 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
 
     public AsyncCommand SaveCommand { get; }
 
+    public string? ErrorMessage
+    {
+        get => _errorMessage;
+        private set
+        {
+            if (_errorMessage == value)
+            {
+                return;
+            }
+
+            _errorMessage = value;
+            OnPropertyChanged();
+        }
+    }
+
     public ShoppingListCreatePreset? SelectedPreset
     {
         get => _selectedPreset;
@@ -83,6 +99,7 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
 
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
+        ErrorMessage = null;
         var options = await _shoppingListApiClient.GetCreateOptionsAsync(cancellationToken);
         Days.Clear();
         foreach (var day in options.Select(MapDay))
@@ -93,15 +110,24 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
 
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
-        var selectedIngredients = Days
-            .SelectMany(day => day.Meals)
-            .SelectMany(meal => meal.Ingredients
-                .Where(ingredient => ingredient.IsSelected)
-                .Select(ingredient => new CreateShoppingListIngredientRequest(meal.Date, meal.SlotType, ingredient.IngredientId)))
-            .ToArray();
+        ErrorMessage = null;
 
-        await _shoppingListApiClient.CreateAsync("Shopping list", selectedIngredients, cancellationToken);
-        await _navigator.GoToAsync("shopping-list");
+        try
+        {
+            var selectedIngredients = Days
+                .SelectMany(day => day.Meals)
+                .SelectMany(meal => meal.Ingredients
+                    .Where(ingredient => ingredient.IsSelected)
+                    .Select(ingredient => new CreateShoppingListIngredientRequest(meal.Date, meal.SlotType, ingredient.IngredientId)))
+                .ToArray();
+
+            await _shoppingListApiClient.CreateAsync("Shopping list", selectedIngredients, cancellationToken);
+            await _navigator.GoToAsync("//main/shopping-list");
+        }
+        catch (Exception exception)
+        {
+            ErrorMessage = exception.Message;
+        }
     }
 
     private static ShoppingListCreateDayViewModel MapDay(ShoppingListCreateDayOptionDto day)

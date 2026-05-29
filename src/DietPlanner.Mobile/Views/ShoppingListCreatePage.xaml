@@ -3,41 +3,85 @@
     x:Class="DietPlanner.Mobile.Views.ShoppingListCreatePage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:viewModels="clr-namespace:DietPlanner.Mobile.ViewModels"
+    x:DataType="viewModels:ShoppingListCreateViewModel"
     Title="Create shopping list">
-    <CollectionView ItemsSource="{Binding Days}">
-        <CollectionView.ItemTemplate>
-            <DataTemplate>
-                <VerticalStackLayout Padding="20" Spacing="12">
-                    <Label FontAttributes="Bold" Text="{Binding Date}" />
-                    <CollectionView ItemsSource="{Binding Meals}" SelectionMode="None">
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <VerticalStackLayout Spacing="8">
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <Label FontAttributes="Bold" Text="{Binding MealName}" />
-                                        <Button
-                                            Grid.Column="1"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleMealCommand}"
-                                            CommandParameter="{Binding .}"
-                                            Text="Toggle" />
-                                    </Grid>
-                                    <CollectionView ItemsSource="{Binding Ingredients}" SelectionMode="None">
-                                        <CollectionView.ItemTemplate>
-                                            <DataTemplate>
-                                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
-                                                    <CheckBox IsChecked="{Binding IsSelected}" />
-                                                    <Label Grid.Column="1" Text="{Binding Name}" />
-                                                    <Label Grid.Column="2" Text="{Binding Quantity}" />
-                                                </Grid>
-                                            </DataTemplate>
-                                        </CollectionView.ItemTemplate>
-                                    </CollectionView>
-                                </VerticalStackLayout>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-                </VerticalStackLayout>
-            </DataTemplate>
-        </CollectionView.ItemTemplate>
-    </CollectionView>
+    <Grid RowDefinitions="Auto,*">
+        <VerticalStackLayout
+            Padding="24"
+            Spacing="16"
+            IsVisible="{Binding IsPresetStep}">
+            <Label FontAttributes="Bold" FontSize="28" Text="Choose a preset" />
+            <Label Text="Start with the full week or fine-tune the ingredients first." />
+            <Button
+                Command="{Binding SelectPresetCommand}"
+                CommandParameter="{x:Static viewModels:ShoppingListCreatePreset.FullWeek}"
+                Text="Full week" />
+            <Button
+                Command="{Binding SelectPresetCommand}"
+                CommandParameter="{x:Static viewModels:ShoppingListCreatePreset.SelectedDays}"
+                Text="Selected days" />
+            <Button
+                Command="{Binding SelectPresetCommand}"
+                CommandParameter="{x:Static viewModels:ShoppingListCreatePreset.Custom}"
+                Text="Custom" />
+            <Label TextColor="IndianRed" Text="{Binding ErrorMessage}" />
+        </VerticalStackLayout>
+
+        <Grid
+            Grid.Row="1"
+            RowDefinitions="*,Auto"
+            IsVisible="{Binding IsBuilderStep}">
+            <CollectionView ItemsSource="{Binding Days}" SelectionMode="None">
+                <CollectionView.Header>
+                    <VerticalStackLayout Padding="24" Spacing="12">
+                        <Label FontAttributes="Bold" FontSize="28" Text="Review ingredients" />
+                        <Label Text="Adjust the selection before saving the list." />
+                        <Label TextColor="IndianRed" Text="{Binding ErrorMessage}" />
+                    </VerticalStackLayout>
+                </CollectionView.Header>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="viewModels:ShoppingListCreateDayViewModel">
+                        <VerticalStackLayout Padding="20" Spacing="12">
+                            <Label FontAttributes="Bold" Text="{Binding Date}" />
+                            <CollectionView ItemsSource="{Binding Meals}" SelectionMode="None">
+                                <CollectionView.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:ShoppingListCreateMealViewModel">
+                                        <VerticalStackLayout Spacing="8">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <Label FontAttributes="Bold" Text="{Binding MealName}" />
+                                                <Button
+                                                    Grid.Column="1"
+                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleMealCommand}"
+                                                    CommandParameter="{Binding .}"
+                                                    Text="Toggle" />
+                                            </Grid>
+                                            <CollectionView ItemsSource="{Binding Ingredients}" SelectionMode="None">
+                                                <CollectionView.ItemTemplate>
+                                                    <DataTemplate x:DataType="viewModels:ShoppingListCreateIngredientViewModel">
+                                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                                            <CheckBox IsChecked="{Binding IsSelected}" />
+                                                            <Label Grid.Column="1" Text="{Binding Name}" />
+                                                            <Label Grid.Column="2" Text="{Binding Quantity}" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </CollectionView.ItemTemplate>
+                                            </CollectionView>
+                                        </VerticalStackLayout>
+                                    </DataTemplate>
+                                </CollectionView.ItemTemplate>
+                            </CollectionView>
+                        </VerticalStackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Button
+                Grid.Row="1"
+                Margin="24"
+                Command="{Binding SaveCommand}"
+                HorizontalOptions="Fill"
+                Text="Save list" />
+        </Grid>
+    </Grid>
 </ContentPage>

@@ -56,7 +56,7 @@ public sealed class ShoppingListCreateViewModelTests
         viewModel.SelectPresetCommand.Execute(ShoppingListCreatePreset.FullWeek);
         await viewModel.SaveAsync();
 
-        Assert.Equal("shopping-list", navigator.LastRoute);
+        Assert.Equal("//main/shopping-list", navigator.LastRoute);
         Assert.Equal(
             [
                 new CreateShoppingListIngredientRequest("2026-05-25", "breakfast", Guid.Parse("11111111-1111-1111-1111-111111111111")),
@@ -64,6 +64,48 @@ public sealed class ShoppingListCreateViewModelTests
                 new CreateShoppingListIngredientRequest("2026-05-26", "dinner", Guid.Parse("33333333-3333-3333-3333-333333333333"))
             ],
             api.CreatedIngredientKeys);
+    }
+
+    [Fact]
+    public async Task SaveAsync_ShouldSurfaceErrorMessageAndAvoidNavigation_WhenCreateFails()
+    {
+        var api = new FakeShoppingListApiClient(
+            createOptions: BuildCreateOptions(),
+            createException: new InvalidOperationException("Could not create shopping list."));
+        var navigator = new RecordingNavigator();
+        var viewModel = new ShoppingListCreateViewModel(api, navigator);
+
+        await viewModel.LoadAsync();
+        await viewModel.SelectPresetCommand.ExecuteAsync(ShoppingListCreatePreset.FullWeek);
+
+        var exception = await Record.ExceptionAsync(() => viewModel.SaveCommand.ExecuteAsync(null));
+
+        Assert.Null(exception);
+        Assert.Equal("Could not create shopping list.", viewModel.ErrorMessage);
+        Assert.Null(navigator.LastRoute);
+    }
+
+    [Fact]
+    public void ShoppingListCreatePage_ShouldContainPresetAndSaveBindings()
+    {
+        var pageXamlPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "src",
+            "DietPlanner.Mobile",
+            "Views",
+            "ShoppingListCreatePage.xaml"));
+
+        var xaml = File.ReadAllText(pageXamlPath);
+
+        Assert.Contains("IsVisible=\"{Binding IsPresetStep}\"", xaml);
+        Assert.Contains("SelectPresetCommand", xaml);
+        Assert.Contains("IsVisible=\"{Binding IsBuilderStep}\"", xaml);
+        Assert.Contains("SaveCommand", xaml);
     }
 
     private static IReadOnlyList<ShoppingListCreateDayOptionDto> BuildCreateOptions()
@@ -119,16 +161,23 @@ public sealed class ShoppingListCreateViewModelTests
 file sealed class FakeShoppingListApiClient : IShoppingListApiClient
 {
     private readonly IReadOnlyList<ShoppingListCreateDayOptionDto> _createOptions;
+    private readonly Exception? _createException;
 
-    public FakeShoppingListApiClient(IReadOnlyList<ShoppingListCreateDayOptionDto>? createOptions = null)
+    public FakeShoppingListApiClient(IReadOnlyList<ShoppingListCreateDayOptionDto>? createOptions = null, Exception? createException = null)
     {
         _createOptions = createOptions ?? [];
+        _createException = createException;
     }
 
     public IReadOnlyList<CreateShoppingListIngredientRequest> CreatedIngredientKeys { get; private set; } = [];
 
     public Task<ShoppingListDetailsDto> CreateAsync(string name, IReadOnlyList<CreateShoppingListIngredientRequest> ingredientKeys, CancellationToken cancellationToken = default)
     {
+        if (_createException is not null)
+        {
+            throw _createException;
+        }
+
         CreatedIngredientKeys = ingredientKeys.ToArray();
         return Task.FromResult(new ShoppingListDetailsDto(Guid.NewGuid(), name, []));
     }
