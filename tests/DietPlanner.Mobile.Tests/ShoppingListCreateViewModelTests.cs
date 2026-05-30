@@ -94,6 +94,22 @@ public sealed class ShoppingListCreateViewModelTests
     }
 
     [Fact]
+    public async Task SelectCustomPreset_ShouldPreselectAllIngredientsAndShowBuilder()
+    {
+        var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
+        var viewModel = new ShoppingListCreateViewModel(api, new RecordingNavigator());
+
+        await viewModel.LoadAsync();
+        viewModel.SelectPresetCommand.Execute(ShoppingListCreatePreset.Custom);
+
+        Assert.False(viewModel.IsPresetStep);
+        Assert.True(viewModel.IsBuilderStep);
+        Assert.All(
+            viewModel.Days.SelectMany(day => day.Meals).SelectMany(meal => meal.Ingredients),
+            ingredient => Assert.True(ingredient.IsSelected));
+    }
+
+    [Fact]
     public async Task SaveAsync_ShouldSendSelectedIngredientsAndNavigateBackToIndex()
     {
         var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
@@ -190,6 +206,8 @@ public sealed class ShoppingListCreateViewModelTests
         Assert.Contains("ContinueCommand", xaml);
         Assert.Contains("IsVisible=\"{Binding IsBuilderStep}\"", xaml);
         Assert.Contains("SaveCommand", xaml);
+        Assert.Contains("BindableLayout.ItemsSource=\"{Binding Meals}\"", xaml);
+        Assert.Contains("BindableLayout.ItemsSource=\"{Binding Ingredients}\"", xaml);
     }
 
     private static IReadOnlyList<ShoppingListCreateDayOptionDto> BuildCreateOptions()

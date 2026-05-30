@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using DietPlanner.Mobile.Services;
 
 namespace DietPlanner.Mobile.ViewModels;
@@ -25,6 +26,7 @@ public sealed class MealDetailsViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ObservableCollection<MealDetailsIngredientViewModel> Ingredients { get; } = [];
+    public ObservableCollection<PreparationStepViewModel> PreparationSteps { get; } = [];
 
     public string Name
     {
@@ -122,6 +124,7 @@ public sealed class MealDetailsViewModel : INotifyPropertyChanged
             Kcal = details.Kcal;
             Protein = details.Protein;
             Description = details.Description;
+            ApplyPreparationSteps(details.Description);
 
             Ingredients.Clear();
             foreach (var ingredient in details.Ingredients.Select(i => new MealDetailsIngredientViewModel(i.Name, i.Quantity, i.Unit, i.Category)))
@@ -133,12 +136,52 @@ public sealed class MealDetailsViewModel : INotifyPropertyChanged
         {
             ErrorMessage = "Could not load recipe details.";
             Ingredients.Clear();
+            PreparationSteps.Clear();
         }
         finally
         {
             IsLoading = false;
         }
     }
+
+    private void ApplyPreparationSteps(string? description)
+    {
+        PreparationSteps.Clear();
+        foreach (var step in SplitPreparationSteps(description))
+        {
+            PreparationSteps.Add(new PreparationStepViewModel(step));
+        }
+    }
+
+    public static IReadOnlyList<string> SplitPreparationSteps(string? description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            return [];
+        }
+
+        var normalized = Regex.Replace(description.Trim(), @"\r\n?", "\n");
+        var numberedMatches = Regex.Matches(
+            normalized,
+            @"(?s)(?:(?<=^)|(?<=\s))(\d+)\.\s*(.*?)(?=(?:(?<=\s)\d+\.\s*)|$)");
+
+        if (numberedMatches.Count > 0)
+        {
+            return numberedMatches
+                .Select(match => $"{match.Groups[1].Value}. {NormalizeStepText(match.Groups[2].Value)}")
+                .Where(step => !string.IsNullOrWhiteSpace(step))
+                .ToArray();
+        }
+
+        return normalized
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(NormalizeStepText)
+            .Where(step => !string.IsNullOrWhiteSpace(step))
+            .ToArray();
+    }
+
+    private static string NormalizeStepText(string value)
+        => Regex.Replace(value, @"\s*\n\s*|\s{2,}", " ").Trim();
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -159,4 +202,14 @@ public sealed class MealDetailsIngredientViewModel
     public string Unit { get; }
     public string Category { get; }
     public string QuantityText => $"{Quantity:0.##} {Unit}".Trim();
+}
+
+public sealed class PreparationStepViewModel
+{
+    public PreparationStepViewModel(string text)
+    {
+        Text = text;
+    }
+
+    public string Text { get; }
 }

@@ -78,8 +78,8 @@
                     <DataTemplate x:DataType="viewModels:ShoppingListCreateDayViewModel">
                         <VerticalStackLayout Padding="20" Spacing="12">
                             <Label FontAttributes="Bold" Text="{Binding Date}" />
-                            <CollectionView ItemsSource="{Binding Meals}" SelectionMode="None">
-                                <CollectionView.ItemTemplate>
+                            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Meals}" Spacing="12">
+                                <BindableLayout.ItemTemplate>
                                     <DataTemplate x:DataType="viewModels:ShoppingListCreateMealViewModel">
                                         <VerticalStackLayout Spacing="8">
                                             <Grid ColumnDefinitions="*,Auto">
@@ -90,8 +90,8 @@
                                                     CommandParameter="{Binding .}"
                                                     Text="Toggle" />
                                             </Grid>
-                                            <CollectionView ItemsSource="{Binding Ingredients}" SelectionMode="None">
-                                                <CollectionView.ItemTemplate>
+                                            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Ingredients}" Spacing="8">
+                                                <BindableLayout.ItemTemplate>
                                                     <DataTemplate x:DataType="viewModels:ShoppingListCreateIngredientViewModel">
                                                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
                                                             <CheckBox IsChecked="{Binding IsSelected}" />
@@ -99,12 +99,12 @@
                                                             <Label Grid.Column="2" Text="{Binding Quantity}" />
                                                         </Grid>
                                                     </DataTemplate>
-                                                </CollectionView.ItemTemplate>
-                                            </CollectionView>
+                                                </BindableLayout.ItemTemplate>
+                                            </VerticalStackLayout>
                                         </VerticalStackLayout>
                                     </DataTemplate>
-                                </CollectionView.ItemTemplate>
-                            </CollectionView>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
                         </VerticalStackLayout>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>

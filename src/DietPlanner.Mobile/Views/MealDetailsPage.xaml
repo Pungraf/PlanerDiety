@@ -48,7 +48,15 @@
                 <CollectionView.Footer>
                     <VerticalStackLayout Padding="0,12,0,0" Spacing="8">
                         <Label FontAttributes="Bold" Text="Preparation" />
-                        <Label Text="{Binding Description}" LineBreakMode="WordWrap" />
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding PreparationSteps}" Spacing="8">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="12" StrokeThickness="0">
+                                        <Label Text="{Binding Text}" LineBreakMode="WordWrap" />
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
                     </VerticalStackLayout>
                 </CollectionView.Footer>
             </CollectionView>

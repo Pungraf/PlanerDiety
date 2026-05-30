@@ -195,8 +195,8 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
                 ShowDaySelectionStep();
                 break;
             case ShoppingListCreatePreset.Custom:
-                SetDaySelection(isSelected: false);
-                SetIngredientSelection(isSelected: false);
+                SetDaySelection(isSelected: true);
+                SetIngredientSelection(isSelected: true);
                 ShowBuilderStep();
                 break;
         }

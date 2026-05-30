@@ -14,13 +14,14 @@ public sealed class MealDetailsViewModelTests
         {
             Current = new MealDetailsContext(mealId)
         };
-        var api = new FakePlansApiClient(new MealDetailsDto(mealId, "Owsianka", "breakfast", 450, 25, "Gotuj.", []));
+        var api = new FakePlansApiClient(new MealDetailsDto(mealId, "Owsianka", "breakfast", 450, 25, "1. Gotuj. 2. Mieszaj.", []));
         var viewModel = new MealDetailsViewModel(api, context);
 
         await viewModel.LoadAsync();
 
         Assert.Equal("Owsianka", viewModel.Name);
-        Assert.Equal("Gotuj.", viewModel.Description);
+        Assert.Equal("1. Gotuj. 2. Mieszaj.", viewModel.Description);
+        Assert.Equal(["1. Gotuj.", "2. Mieszaj."], viewModel.PreparationSteps.Select(step => step.Text));
     }
 
     [Fact]
@@ -81,6 +82,37 @@ public sealed class MealDetailsViewModelTests
         Assert.Equal("Owsianka", viewModel.Name);
         Assert.Equal("Gotuj i mieszaj.", viewModel.Description);
         Assert.Single(viewModel.Ingredients);
+    }
+
+    [Fact]
+    public void SplitPreparationSteps_ShouldSplitNumberedStepsIntoSeparateItems()
+    {
+        var steps = MealDetailsViewModel.SplitPreparationSteps("1.\nPodsmaz cebule 2. Dodaj pomidory\n3. Gotuj 10 minut");
+
+        Assert.Equal(
+            ["1. Podsmaz cebule", "2. Dodaj pomidory", "3. Gotuj 10 minut"],
+            steps);
+    }
+
+    [Fact]
+    public void MealDetailsPage_ShouldBindPreparationSteps()
+    {
+        var pageXamlPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "src",
+            "DietPlanner.Mobile",
+            "Views",
+            "MealDetailsPage.xaml"));
+
+        var xaml = File.ReadAllText(pageXamlPath);
+
+        Assert.Contains("PreparationSteps", xaml);
+        Assert.Contains("BindableLayout.ItemsSource", xaml);
     }
 
     private sealed class FakePlansApiClient : IPlansApiClient
