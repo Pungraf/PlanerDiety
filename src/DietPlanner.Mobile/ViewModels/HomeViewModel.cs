@@ -16,25 +16,35 @@ public sealed class HomeViewModel : INotifyPropertyChanged
     private readonly IUserPromptService _promptService;
     private readonly IMealSearchContextStore _mealSearchContextStore;
     private readonly IMealDetailsContextStore _mealDetailsContextStore;
+    private readonly ISelectedPlanContextStore _selectedPlanContextStore;
+    private HomePlanViewModel? _currentPlan;
+    private HomePlanViewModel? _futurePlan;
+    private HomePlanViewModel? _selectedPlan;
     private HomeDayViewModel? _selectedDay;
     private HomeDayViewModel? _copyTargetDay;
     private string? _errorMessage;
     private bool _isLoading;
     private bool _isCopyDayPickerOpen;
+    private bool _canGenerateFutureWeek;
 
     public HomeViewModel(
         IPlansApiClient plansApiClient,
         IAppNavigator navigator,
         IUserPromptService promptService,
         IMealSearchContextStore mealSearchContextStore,
-        IMealDetailsContextStore mealDetailsContextStore)
+        IMealDetailsContextStore mealDetailsContextStore,
+        ISelectedPlanContextStore selectedPlanContextStore)
     {
         _plansApiClient = plansApiClient;
         _navigator = navigator;
         _promptService = promptService;
         _mealSearchContextStore = mealSearchContextStore;
         _mealDetailsContextStore = mealDetailsContextStore;
+        _selectedPlanContextStore = selectedPlanContextStore;
         LoadCommand = new AsyncCommand(_ => LoadAsync());
+        GenerateFutureWeekCommand = new AsyncCommand(_ => GenerateFutureWeekAsync(), () => CanGenerateFutureWeek);
+        SelectCurrentWeekCommand = new AsyncCommand(_ => SelectCurrentWeekAsync(), () => CurrentPlan is not null);
+        SelectFutureWeekCommand = new AsyncCommand(_ => SelectFutureWeekAsync(), () => FuturePlan is not null);
         OpenCopyDayCommand = new AsyncCommand(_ => OpenCopyDayAsync(), () => SelectedDay is not null);
         ConfirmCopyDayCommand = new AsyncCommand(_ => ConfirmCopyDayAsync(), () => SelectedDay is not null && CopyTargetDay is not null);
         CancelCopyDayCommand = new AsyncCommand(_ => CancelCopyDayAsync());
@@ -50,6 +60,12 @@ public sealed class HomeViewModel : INotifyPropertyChanged
 
     public AsyncCommand LoadCommand { get; }
 
+    public AsyncCommand GenerateFutureWeekCommand { get; }
+
+    public AsyncCommand SelectCurrentWeekCommand { get; }
+
+    public AsyncCommand SelectFutureWeekCommand { get; }
+
     public AsyncCommand OpenCopyDayCommand { get; }
 
     public AsyncCommand ConfirmCopyDayCommand { get; }
@@ -63,6 +79,68 @@ public sealed class HomeViewModel : INotifyPropertyChanged
     public AsyncCommand GoToHomeCommand { get; }
 
     public AsyncCommand GoToShoppingListsCommand { get; }
+
+    public HomePlanViewModel? CurrentPlan
+    {
+        get => _currentPlan;
+        private set
+        {
+            if (_currentPlan == value)
+            {
+                return;
+            }
+
+            _currentPlan = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasFutureWeek));
+            OnPropertyChanged(nameof(IsCurrentWeekSelected));
+            SelectCurrentWeekCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    public HomePlanViewModel? FuturePlan
+    {
+        get => _futurePlan;
+        private set
+        {
+            if (_futurePlan == value)
+            {
+                return;
+            }
+
+            _futurePlan = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(HasFutureWeek));
+            OnPropertyChanged(nameof(IsFutureWeekSelected));
+            SelectFutureWeekCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    public Guid? SelectedPlanId => _selectedPlan?.Id;
+
+    public string SelectedWeekLabel => _selectedPlan?.Label ?? "Current week";
+
+    public bool HasFutureWeek => FuturePlan is not null;
+
+    public bool IsCurrentWeekSelected => SelectedPlanId == CurrentPlan?.Id;
+
+    public bool IsFutureWeekSelected => SelectedPlanId == FuturePlan?.Id;
+
+    public bool CanGenerateFutureWeek
+    {
+        get => _canGenerateFutureWeek;
+        private set
+        {
+            if (_canGenerateFutureWeek == value)
+            {
+                return;
+            }
+
+            _canGenerateFutureWeek = value;
+            OnPropertyChanged();
+            GenerateFutureWeekCommand.RaiseCanExecuteChanged();
+        }
+    }
 
     public HomeDayViewModel? SelectedDay
     {
@@ -158,34 +236,18 @@ public sealed class HomeViewModel : INotifyPropertyChanged
 
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
-        await LoadAsync(preferredDate: null, cancellationToken);
+        await LoadAsync(preferredPlanId: _selectedPlanContextStore.SelectedPlanId, preferredDate: null, cancellationToken);
     }
 
-    private async Task LoadAsync(DateOnly? preferredDate, CancellationToken cancellationToken)
+    private async Task LoadAsync(Guid? preferredPlanId, DateOnly? preferredDate, CancellationToken cancellationToken)
     {
         ErrorMessage = null;
         IsLoading = true;
 
         try
         {
-            var plan = await _plansApiClient.GetCurrentPlanAsync(cancellationToken);
-            var startDate = ParseApiDate(plan.StartDate);
-            var mappedDays = plan.Days
-                .Select(MapDay)
-                .OrderBy(day => day.Date)
-                .ToArray();
-            var today = DateOnly.FromDateTime(DateTime.Today);
-            var defaultDate = mappedDays.Any(day => day.Date == today) ? today : startDate;
-            var selectedDate = preferredDate ?? SelectedDay?.Date ?? defaultDate;
-
-            Days.Clear();
-            foreach (var day in mappedDays)
-            {
-                Days.Add(day);
-            }
-
-            SelectedDay = mappedDays.FirstOrDefault(day => day.Date == selectedDate)
-                ?? mappedDays.FirstOrDefault();
+            var state = await _plansApiClient.GetPlanningStateAsync(cancellationToken);
+            ApplyPlanningState(state, preferredPlanId, preferredDate);
         }
         catch (Exception exception)
         {
@@ -195,6 +257,65 @@ public sealed class HomeViewModel : INotifyPropertyChanged
         {
             IsLoading = false;
         }
+    }
+
+    private void ApplyPlanningState(PlanningStateDto state, Guid? preferredPlanId, DateOnly? preferredDate)
+    {
+        CurrentPlan = MapPlan("Current week", state.CurrentPlan);
+        FuturePlan = state.FuturePlan is null ? null : MapPlan("Next week", state.FuturePlan);
+        CanGenerateFutureWeek = state.CanGenerateFutureWeek;
+
+        var nextSelectedPlan = ResolveSelectedPlan(preferredPlanId)
+            ?? ResolveSelectedPlan(_selectedPlanContextStore.SelectedPlanId)
+            ?? CurrentPlan;
+
+        ApplySelectedPlan(nextSelectedPlan, preferredDate);
+    }
+
+    private HomePlanViewModel? ResolveSelectedPlan(Guid? preferredPlanId)
+    {
+        if (!preferredPlanId.HasValue)
+        {
+            return null;
+        }
+
+        if (CurrentPlan?.Id == preferredPlanId.Value)
+        {
+            return CurrentPlan;
+        }
+
+        if (FuturePlan?.Id == preferredPlanId.Value)
+        {
+            return FuturePlan;
+        }
+
+        return null;
+    }
+
+    private void ApplySelectedPlan(HomePlanViewModel? selectedPlan, DateOnly? preferredDate)
+    {
+        _selectedPlan = selectedPlan;
+        _selectedPlanContextStore.SelectedPlanId = selectedPlan?.Id;
+        OnPropertyChanged(nameof(SelectedPlanId));
+        OnPropertyChanged(nameof(SelectedWeekLabel));
+        OnPropertyChanged(nameof(IsCurrentWeekSelected));
+        OnPropertyChanged(nameof(IsFutureWeekSelected));
+
+        var mappedDays = selectedPlan?.Days.OrderBy(day => day.Date).ToArray() ?? [];
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var defaultDate = mappedDays.Any(day => day.Date == today)
+            ? today
+            : mappedDays.FirstOrDefault()?.Date;
+        var selectedDate = preferredDate ?? SelectedDay?.Date ?? defaultDate;
+
+        Days.Clear();
+        foreach (var day in mappedDays)
+        {
+            Days.Add(day);
+        }
+
+        SelectedDay = mappedDays.FirstOrDefault(day => day.Date == selectedDate)
+            ?? mappedDays.FirstOrDefault();
     }
 
     private Task OpenCopyDayAsync()
@@ -230,10 +351,18 @@ public sealed class HomeViewModel : INotifyPropertyChanged
 
         try
         {
-            await _plansApiClient.CopyDayAsync(SelectedDay.Date, targetDay.Date, deleteLinkedShoppingLists: false);
+            if (SelectedPlanId.HasValue)
+            {
+                await _plansApiClient.CopyDayAsync(SelectedPlanId.Value, SelectedDay.Date, targetDay.Date, deleteLinkedShoppingLists: false);
+            }
+            else
+            {
+                await _plansApiClient.CopyDayAsync(SelectedDay.Date, targetDay.Date, deleteLinkedShoppingLists: false);
+            }
+
             IsCopyDayPickerOpen = false;
             CopyTargetDay = null;
-            await LoadAsync(targetDay.Date, CancellationToken.None);
+            await LoadAsync(SelectedPlanId, targetDay.Date, CancellationToken.None);
         }
         catch (LinkedShoppingListsExistException)
         {
@@ -248,10 +377,18 @@ public sealed class HomeViewModel : INotifyPropertyChanged
                 return;
             }
 
-            await _plansApiClient.CopyDayAsync(SelectedDay.Date, targetDay.Date, deleteLinkedShoppingLists: true);
+            if (SelectedPlanId.HasValue)
+            {
+                await _plansApiClient.CopyDayAsync(SelectedPlanId.Value, SelectedDay.Date, targetDay.Date, deleteLinkedShoppingLists: true);
+            }
+            else
+            {
+                await _plansApiClient.CopyDayAsync(SelectedDay.Date, targetDay.Date, deleteLinkedShoppingLists: true);
+            }
+
             IsCopyDayPickerOpen = false;
             CopyTargetDay = null;
-            await LoadAsync(targetDay.Date, CancellationToken.None);
+            await LoadAsync(SelectedPlanId, targetDay.Date, CancellationToken.None);
         }
         catch (Exception exception)
         {
@@ -266,7 +403,7 @@ public sealed class HomeViewModel : INotifyPropertyChanged
             return;
         }
 
-        _mealSearchContextStore.Current = new MealSearchContext(null, SelectedDay.Date, slot.SlotType, slot.Name);
+        _mealSearchContextStore.Current = new MealSearchContext(SelectedPlanId, SelectedDay.Date, slot.SlotType, slot.Name);
         await _navigator.GoToAsync("meal-search");
     }
 
@@ -305,6 +442,17 @@ public sealed class HomeViewModel : INotifyPropertyChanged
         return new HomeDayViewModel(parsedDate, meals);
     }
 
+    private static HomePlanViewModel MapPlan(string label, CurrentPlanDto plan)
+    {
+        var startDate = ParseApiDate(plan.StartDate);
+        var days = plan.Days
+            .Select(MapDay)
+            .OrderBy(day => day.Date)
+            .ToArray();
+
+        return new HomePlanViewModel(plan.Id, label, startDate, days);
+    }
+
     private static DateOnly ParseApiDate(string value)
     {
         if (DateOnly.TryParseExact(value, ApiDateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
@@ -319,6 +467,65 @@ public sealed class HomeViewModel : INotifyPropertyChanged
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+
+    private Task SelectCurrentWeekAsync()
+    {
+        if (CurrentPlan is not null)
+        {
+            ApplySelectedPlan(CurrentPlan, preferredDate: null);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task SelectFutureWeekAsync()
+    {
+        if (FuturePlan is not null)
+        {
+            ApplySelectedPlan(FuturePlan, preferredDate: null);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task GenerateFutureWeekAsync()
+    {
+        ErrorMessage = null;
+        IsLoading = true;
+
+        try
+        {
+            var state = await _plansApiClient.GenerateFutureWeekAsync();
+            ApplyPlanningState(state, CurrentPlan?.Id, SelectedDay?.Date);
+        }
+        catch (Exception exception)
+        {
+            ErrorMessage = exception.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}
+
+public sealed class HomePlanViewModel
+{
+    public HomePlanViewModel(Guid id, string label, DateOnly startDate, IReadOnlyList<HomeDayViewModel> days)
+    {
+        Id = id;
+        Label = label;
+        StartDate = startDate;
+        Days = days;
+    }
+
+    public Guid Id { get; }
+
+    public string Label { get; }
+
+    public DateOnly StartDate { get; }
+
+    public IReadOnlyList<HomeDayViewModel> Days { get; }
 }
 
 public sealed class HomeDayViewModel

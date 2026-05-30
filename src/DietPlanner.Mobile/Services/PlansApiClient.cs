@@ -7,6 +7,8 @@ public interface IPlansApiClient
 {
     Task<CurrentPlanDto> GetCurrentPlanAsync(CancellationToken cancellationToken = default);
 
+    Task<PlanningStateDto> GetPlanningStateAsync(CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<MealSummaryDto>> SearchMealsAsync(string? query, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<MealSummaryDto>> GetMealCatalogAsync(CancellationToken cancellationToken = default);
@@ -20,6 +22,8 @@ public interface IPlansApiClient
     Task CopyDayAsync(DateOnly sourceDate, DateOnly targetDate, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default);
 
     Task CopyDayAsync(Guid planId, DateOnly sourceDate, DateOnly targetDate, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default);
+
+    Task<PlanningStateDto> GenerateFutureWeekAsync(CancellationToken cancellationToken = default);
 }
 
 public sealed class PlansApiClient : IPlansApiClient
@@ -41,6 +45,16 @@ public sealed class PlansApiClient : IPlansApiClient
 
         return await response.Content.ReadFromJsonAsync<CurrentPlanDto>(cancellationToken: cancellationToken)
             ?? throw new InvalidOperationException("Plans API returned an empty current plan response.");
+    }
+
+    public async Task<PlanningStateDto> GetPlanningStateAsync(CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Get, "api/plans/state");
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<PlanningStateDto>(cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("Plans API returned an empty planning state response.");
     }
 
     public async Task<IReadOnlyList<MealSummaryDto>> SearchMealsAsync(string? query, CancellationToken cancellationToken = default)
@@ -135,6 +149,16 @@ public sealed class PlansApiClient : IPlansApiClient
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task<PlanningStateDto> GenerateFutureWeekAsync(CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, "api/plans/future/generate");
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<PlanningStateDto>(cancellationToken: cancellationToken)
+            ?? throw new InvalidOperationException("Plans API returned an empty planning state response.");
+    }
+
     private HttpRequestMessage CreateRequest(HttpMethod method, string endpoint)
     {
         var accessToken = _sessionStore.CurrentSession?.AccessToken;
@@ -154,6 +178,8 @@ public sealed class PlansApiClient : IPlansApiClient
 }
 
 public sealed record CurrentPlanDto(Guid Id, string Status, string StartDate, IReadOnlyList<PlanDayDto> Days);
+
+public sealed record PlanningStateDto(CurrentPlanDto CurrentPlan, CurrentPlanDto? FuturePlan, bool CanGenerateFutureWeek);
 
 public sealed record PlanDayDto(string Date, IReadOnlyList<PlanMealSlotDto> Meals);
 

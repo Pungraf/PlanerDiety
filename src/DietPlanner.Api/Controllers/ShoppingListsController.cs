@@ -39,7 +39,7 @@ public sealed class ShoppingListsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<ShoppingListSummaryResponse>>> List(CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<ShoppingListSummaryResponse>>> List([FromQuery] Guid? planId, CancellationToken cancellationToken)
     {
         var userId = GetCurrentUserId();
         if (userId is null)
@@ -48,7 +48,7 @@ public sealed class ShoppingListsController : ControllerBase
         }
 
         var shoppingLists = await _listShoppingListsHandler.HandleAsync(
-            new ListShoppingListsQuery(userId.Value),
+            new ListShoppingListsQuery(userId.Value, planId),
             cancellationToken);
 
         return Ok(shoppingLists.Select(ShoppingListSummaryResponse.From).ToArray());
@@ -56,6 +56,7 @@ public sealed class ShoppingListsController : ControllerBase
 
     [HttpPost]
     public async Task<ActionResult<ShoppingListDetailsResponse>> Create(
+        [FromQuery] Guid? planId,
         [FromBody] CreateShoppingListRequest request,
         CancellationToken cancellationToken)
     {
@@ -70,6 +71,7 @@ public sealed class ShoppingListsController : ControllerBase
         var shoppingList = await _createShoppingListHandler.HandleAsync(
             new CreateShoppingListCommand(
                 userId.Value,
+                planId,
                 request.Name,
                 request.IngredientKeys.Select(ingredient => ingredient.ToCommand()).ToArray()),
             cancellationToken);
@@ -80,7 +82,7 @@ public sealed class ShoppingListsController : ControllerBase
     }
 
     [HttpGet("{listId:guid}")]
-    public async Task<ActionResult<ShoppingListDetailsResponse>> GetDetails(Guid listId, CancellationToken cancellationToken)
+    public async Task<ActionResult<ShoppingListDetailsResponse>> GetDetails(Guid listId, [FromQuery] Guid? planId, CancellationToken cancellationToken)
     {
         var userId = GetCurrentUserId();
         if (userId is null)
@@ -89,14 +91,14 @@ public sealed class ShoppingListsController : ControllerBase
         }
 
         var shoppingList = await _getShoppingListDetailsHandler.HandleAsync(
-            new GetShoppingListDetailsQuery(userId.Value, listId),
+            new GetShoppingListDetailsQuery(userId.Value, listId, planId),
             cancellationToken);
 
         return shoppingList is null ? NotFound() : Ok(ShoppingListDetailsResponse.From(shoppingList));
     }
 
     [HttpGet("create-options")]
-    public async Task<ActionResult<IReadOnlyList<ShoppingListCreateDayResponse>>> GetCreateOptions(CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<ShoppingListCreateDayResponse>>> GetCreateOptions([FromQuery] Guid? planId, CancellationToken cancellationToken)
     {
         var userId = GetCurrentUserId();
         if (userId is null)
@@ -105,7 +107,7 @@ public sealed class ShoppingListsController : ControllerBase
         }
 
         var options = await _getShoppingListCreateOptionsHandler.HandleAsync(
-            new GetShoppingListCreateOptionsQuery(userId.Value),
+            new GetShoppingListCreateOptionsQuery(userId.Value, planId),
             cancellationToken);
 
         return Ok(options.Select(ShoppingListCreateDayResponse.From).ToArray());

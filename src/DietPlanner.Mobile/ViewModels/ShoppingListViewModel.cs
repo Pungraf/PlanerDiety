@@ -13,6 +13,7 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
     private readonly IShoppingListApiClient _shoppingListApiClient;
     private readonly IAppNavigator _navigator;
     private readonly IUserPromptService _promptService;
+    private readonly ISelectedPlanContextStore _selectedPlanContextStore;
     private string? _errorMessage;
     private int _requestVersion;
     private bool _isLoading;
@@ -21,11 +22,13 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
     public ShoppingListViewModel(
         IShoppingListApiClient shoppingListApiClient,
         IAppNavigator navigator,
-        IUserPromptService promptService)
+        IUserPromptService promptService,
+        ISelectedPlanContextStore selectedPlanContextStore)
     {
         _shoppingListApiClient = shoppingListApiClient;
         _navigator = navigator;
         _promptService = promptService;
+        _selectedPlanContextStore = selectedPlanContextStore;
         LoadCommand = new AsyncCommand(_ => LoadAsync());
         ToggleItemCommand = new AsyncCommand(item => ToggleItemAsync(item as ShoppingListSummaryItemViewModel));
         SelectListCommand = new AsyncCommand(item => SelectListAsync(item as ShoppingListSummaryViewModel));
@@ -33,6 +36,8 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
         DeleteSelectedListCommand = new AsyncCommand(_ => DeleteSelectedListAsync());
         BackToListsCommand = new AsyncCommand(_ => BackToListsAsync());
         OpenCreateCommand = new AsyncCommand(_ => _navigator.GoToAsync("shopping-list-create"));
+        GoToHomeCommand = new AsyncCommand(_ => _navigator.GoToMainTabAsync(MainAppTab.Home));
+        GoToShoppingListsCommand = new AsyncCommand(_ => _navigator.GoToMainTabAsync(MainAppTab.ShoppingList));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -54,6 +59,10 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
     public AsyncCommand BackToListsCommand { get; }
 
     public AsyncCommand OpenCreateCommand { get; }
+
+    public AsyncCommand GoToHomeCommand { get; }
+
+    public AsyncCommand GoToShoppingListsCommand { get; }
 
     public bool ShowListPicker => SelectedList is null;
 
@@ -120,7 +129,7 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
 
         try
         {
-            var shoppingLists = await _shoppingListApiClient.ListAsync(cancellationToken);
+            var shoppingLists = await _shoppingListApiClient.ListAsync(_selectedPlanContextStore.SelectedPlanId, cancellationToken);
             if (requestVersion == _requestVersion)
             {
                 ApplyLists(shoppingLists);
@@ -155,7 +164,7 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
 
         try
         {
-            var shoppingList = await _shoppingListApiClient.GetDetailsAsync(list.Id, cancellationToken);
+            var shoppingList = await _shoppingListApiClient.GetDetailsAsync(list.Id, _selectedPlanContextStore.SelectedPlanId, cancellationToken);
             if (requestVersion == _requestVersion)
             {
                 SelectedList = list;

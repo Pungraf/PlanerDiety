@@ -21,7 +21,7 @@ public sealed class ShoppingListCreateViewModelTests
             [
                 new ShoppingListCreateDayOptionDto("2026-05-25", [meal])
             ]);
-        var viewModel = new ShoppingListCreateViewModel(api, new RecordingNavigator());
+        var viewModel = new ShoppingListCreateViewModel(api, new RecordingNavigator(), new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         viewModel.ToggleMealCommand.Execute(viewModel.Days.Single().Meals.Single());
@@ -33,7 +33,7 @@ public sealed class ShoppingListCreateViewModelTests
     public async Task SelectFullWeekPreset_ShouldPreselectAllIngredients()
     {
         var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
-        var viewModel = new ShoppingListCreateViewModel(api, new RecordingNavigator());
+        var viewModel = new ShoppingListCreateViewModel(api, new RecordingNavigator(), new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         viewModel.SelectPresetCommand.Execute(ShoppingListCreatePreset.FullWeek);
@@ -49,7 +49,7 @@ public sealed class ShoppingListCreateViewModelTests
     public async Task SelectSelectedDaysPreset_ShouldShowDaySelectionStep()
     {
         var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
-        var viewModel = new ShoppingListCreateViewModel(api, new RecordingNavigator());
+        var viewModel = new ShoppingListCreateViewModel(api, new RecordingNavigator(), new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         viewModel.SelectPresetCommand.Execute(ShoppingListCreatePreset.SelectedDays);
@@ -63,7 +63,7 @@ public sealed class ShoppingListCreateViewModelTests
     public async Task ContinueSelectedDays_ShouldPreselectOnlySelectedDaysAndShowBuilder()
     {
         var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
-        var viewModel = new ShoppingListCreateViewModel(api, new RecordingNavigator());
+        var viewModel = new ShoppingListCreateViewModel(api, new RecordingNavigator(), new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         viewModel.SelectPresetCommand.Execute(ShoppingListCreatePreset.SelectedDays);
@@ -82,7 +82,7 @@ public sealed class ShoppingListCreateViewModelTests
     public async Task ContinueSelectedDays_ShouldRequireAtLeastOneDay()
     {
         var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
-        var viewModel = new ShoppingListCreateViewModel(api, new RecordingNavigator());
+        var viewModel = new ShoppingListCreateViewModel(api, new RecordingNavigator(), new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         viewModel.SelectPresetCommand.Execute(ShoppingListCreatePreset.SelectedDays);
@@ -97,7 +97,7 @@ public sealed class ShoppingListCreateViewModelTests
     public async Task SelectCustomPreset_ShouldPreselectAllIngredientsAndShowBuilder()
     {
         var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
-        var viewModel = new ShoppingListCreateViewModel(api, new RecordingNavigator());
+        var viewModel = new ShoppingListCreateViewModel(api, new RecordingNavigator(), new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         viewModel.SelectPresetCommand.Execute(ShoppingListCreatePreset.Custom);
@@ -114,7 +114,8 @@ public sealed class ShoppingListCreateViewModelTests
     {
         var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
         var navigator = new RecordingNavigator();
-        var viewModel = new ShoppingListCreateViewModel(api, navigator);
+        var store = new InMemorySelectedPlanContextStore { SelectedPlanId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa") };
+        var viewModel = new ShoppingListCreateViewModel(api, navigator, store);
 
         await viewModel.LoadAsync();
         viewModel.SelectPresetCommand.Execute(ShoppingListCreatePreset.FullWeek);
@@ -128,6 +129,7 @@ public sealed class ShoppingListCreateViewModelTests
                 new CreateShoppingListIngredientRequest("2026-05-26", "dinner", Guid.Parse("33333333-3333-3333-3333-333333333333"))
             ],
             api.CreatedIngredientKeys);
+        Assert.Equal(store.SelectedPlanId, api.LastCreatePlanId);
     }
 
     [Fact]
@@ -137,7 +139,7 @@ public sealed class ShoppingListCreateViewModelTests
             createOptions: BuildCreateOptions(),
             createException: new InvalidOperationException("Could not create shopping list."));
         var navigator = new RecordingNavigator();
-        var viewModel = new ShoppingListCreateViewModel(api, navigator);
+        var viewModel = new ShoppingListCreateViewModel(api, navigator, new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         await viewModel.SelectPresetCommand.ExecuteAsync(ShoppingListCreatePreset.FullWeek);
@@ -154,7 +156,7 @@ public sealed class ShoppingListCreateViewModelTests
     {
         var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
         var navigator = new RecordingNavigator(navigationException: new InvalidOperationException("Navigation failed."));
-        var viewModel = new ShoppingListCreateViewModel(api, navigator);
+        var viewModel = new ShoppingListCreateViewModel(api, navigator, new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         await viewModel.SelectPresetCommand.ExecuteAsync(ShoppingListCreatePreset.FullWeek);
@@ -171,7 +173,7 @@ public sealed class ShoppingListCreateViewModelTests
     {
         var api = new FakeShoppingListApiClient(createOptions: BuildCreateOptions());
         var navigator = new RecordingNavigator(navigationException: new InvalidOperationException("Navigation failed."));
-        var viewModel = new ShoppingListCreateViewModel(api, navigator);
+        var viewModel = new ShoppingListCreateViewModel(api, navigator, new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         await viewModel.SelectPresetCommand.ExecuteAsync(ShoppingListCreatePreset.FullWeek);
@@ -273,11 +275,19 @@ file sealed class FakeShoppingListApiClient : IShoppingListApiClient
 
     public IReadOnlyList<CreateShoppingListIngredientRequest> CreatedIngredientKeys { get; private set; } = [];
 
+    public Guid? LastCreatePlanId { get; private set; }
+
     public int CreateCalls { get; private set; }
 
     public Task<ShoppingListDetailsDto> CreateAsync(string name, IReadOnlyList<CreateShoppingListIngredientRequest> ingredientKeys, CancellationToken cancellationToken = default)
     {
+        return CreateAsync(null, name, ingredientKeys, cancellationToken);
+    }
+
+    public Task<ShoppingListDetailsDto> CreateAsync(Guid? planId, string name, IReadOnlyList<CreateShoppingListIngredientRequest> ingredientKeys, CancellationToken cancellationToken = default)
+    {
         CreateCalls++;
+        LastCreatePlanId = planId;
 
         if (_createException is not null)
         {
@@ -294,10 +304,19 @@ file sealed class FakeShoppingListApiClient : IShoppingListApiClient
     public Task<ShoppingListDetailsDto> GetDetailsAsync(Guid listId, CancellationToken cancellationToken = default)
         => throw new NotSupportedException();
 
+    public Task<ShoppingListDetailsDto> GetDetailsAsync(Guid listId, Guid? planId, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
+
     public Task<IReadOnlyList<ShoppingListCreateDayOptionDto>> GetCreateOptionsAsync(CancellationToken cancellationToken = default)
         => Task.FromResult(_createOptions);
 
+    public Task<IReadOnlyList<ShoppingListCreateDayOptionDto>> GetCreateOptionsAsync(Guid? planId, CancellationToken cancellationToken = default)
+        => Task.FromResult(_createOptions);
+
     public Task<IReadOnlyList<ShoppingListSummaryDto>> ListAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<ShoppingListSummaryDto>>([]);
+
+    public Task<IReadOnlyList<ShoppingListSummaryDto>> ListAsync(Guid? planId, CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlyList<ShoppingListSummaryDto>>([]);
 
     public Task<ShoppingListDetailsDto> ToggleItemAsync(Guid listId, Guid itemId, CancellationToken cancellationToken = default)
@@ -323,6 +342,17 @@ file sealed class RecordingNavigator : IAppNavigator
         }
 
         LastRoute = route;
+        return Task.CompletedTask;
+    }
+
+    public Task GoToMainTabAsync(MainAppTab tab)
+    {
+        if (_navigationException is not null)
+        {
+            throw _navigationException;
+        }
+
+        LastRoute = tab == MainAppTab.Home ? "//home" : "//main/shopping-list";
         return Task.CompletedTask;
     }
 }

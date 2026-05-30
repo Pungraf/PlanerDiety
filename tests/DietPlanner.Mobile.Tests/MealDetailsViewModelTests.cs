@@ -133,6 +133,9 @@ public sealed class MealDetailsViewModelTests
         public Task<CurrentPlanDto> GetCurrentPlanAsync(CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
+        public Task<PlanningStateDto> GetPlanningStateAsync(CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
         public Task<IReadOnlyList<MealSummaryDto>> SearchMealsAsync(string? query, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
@@ -146,6 +149,9 @@ public sealed class MealDetailsViewModelTests
             => throw new NotSupportedException();
 
         public Task ReplaceMealAsync(Guid planId, DateOnly date, string slotType, Guid mealId, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<PlanningStateDto> GenerateFutureWeekAsync(CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
     }
 
@@ -167,6 +173,9 @@ public sealed class MealDetailsViewModelTests
         public Task<CurrentPlanDto> GetCurrentPlanAsync(CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
+        public Task<PlanningStateDto> GetPlanningStateAsync(CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
         public Task<IReadOnlyList<MealSummaryDto>> SearchMealsAsync(string? query, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
@@ -180,6 +189,9 @@ public sealed class MealDetailsViewModelTests
             => throw new NotSupportedException();
 
         public Task ReplaceMealAsync(Guid planId, DateOnly date, string slotType, Guid mealId, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<PlanningStateDto> GenerateFutureWeekAsync(CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
     }
 }

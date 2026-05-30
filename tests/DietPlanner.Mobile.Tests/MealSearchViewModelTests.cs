@@ -134,6 +134,11 @@ public sealed class MealSearchViewModelTests
             throw new NotSupportedException();
         }
 
+        public Task<PlanningStateDto> GetPlanningStateAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<IReadOnlyList<MealSummaryDto>> SearchMealsAsync(string? query, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -170,6 +175,11 @@ public sealed class MealSearchViewModelTests
         public Task ReplaceMealAsync(Guid planId, DateOnly date, string slotType, Guid mealId, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
         {
             return ReplaceMealAsync(date, slotType, mealId, deleteLinkedShoppingLists, cancellationToken);
+        }
+
+        public Task<PlanningStateDto> GenerateFutureWeekAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
     }
 

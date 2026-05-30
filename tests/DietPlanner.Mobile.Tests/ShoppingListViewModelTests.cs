@@ -15,7 +15,7 @@ public sealed class ShoppingListViewModelTests
             [
                 new ShoppingListSummaryDto(Guid.NewGuid(), "Weekly shop", "2026-05-28T10:00:00Z", 3)
             ]);
-        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), new RecordingPromptService(confirmResult: false));
+        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), new RecordingPromptService(confirmResult: false), new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
 
@@ -39,7 +39,7 @@ public sealed class ShoppingListViewModelTests
                 [
                     new ShoppingListSummaryItemDto(Guid.NewGuid(), "Milk", 2m, "l", false)
                 ]));
-        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), new RecordingPromptService(confirmResult: false));
+        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), new RecordingPromptService(confirmResult: false), new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         await viewModel.SelectListCommand.ExecuteAsync(viewModel.Lists.Single());
@@ -62,7 +62,7 @@ public sealed class ShoppingListViewModelTests
                 new ShoppingListSummaryDto(secondListId, "Dinner only", "2026-05-29", 2)
             ]);
         var prompts = new RecordingPromptService(confirmResult: true);
-        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), prompts);
+        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), prompts, new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         await viewModel.DeleteListAsync(viewModel.Lists.First());
@@ -93,7 +93,7 @@ public sealed class ShoppingListViewModelTests
                     new ShoppingListSummaryItemDto(Guid.NewGuid(), "Milk", 2m, "l", false)
                 ]));
         var prompts = new RecordingPromptService(confirmResult: true);
-        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), prompts);
+        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), prompts, new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         await viewModel.SelectListAsync(viewModel.Lists.Single());
@@ -124,7 +124,7 @@ public sealed class ShoppingListViewModelTests
                 [
                     new ShoppingListSummaryItemDto(Guid.NewGuid(), "Milk", 2m, "l", false)
                 ]));
-        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), new RecordingPromptService(confirmResult: false));
+        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), new RecordingPromptService(confirmResult: false), new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         await viewModel.SelectListAsync(viewModel.Lists.Single());
@@ -162,7 +162,7 @@ public sealed class ShoppingListViewModelTests
                     new ShoppingListSummaryItemDto(milkId, "Milk", 2m, "l", true),
                     new ShoppingListSummaryItemDto(breadId, "Bread", 1m, "pc", false)
                 ]));
-        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), new RecordingPromptService(confirmResult: false));
+        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), new RecordingPromptService(confirmResult: false), new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         var selectedList = viewModel.Lists.Single();
@@ -205,6 +205,78 @@ public sealed class ShoppingListViewModelTests
         Assert.Contains("TextDecorations\" Value=\"Strikethrough\"", xaml);
     }
 
+    [Fact]
+    public async Task GoToHomeCommand_ShouldNavigateToHomeRoot()
+    {
+        var navigator = new RecordingNavigator();
+        var viewModel = new ShoppingListViewModel(new FakeShoppingListApiClient(), navigator, new RecordingPromptService(confirmResult: false), new InMemorySelectedPlanContextStore());
+
+        await viewModel.GoToHomeCommand.ExecuteAsync(null);
+
+        Assert.Equal("//home", navigator.LastRoute);
+    }
+
+    [Fact]
+    public async Task LoadAsync_ShouldRequestListsForSelectedPlan()
+    {
+        var planId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var api = new FakeShoppingListApiClient(
+            lists:
+            [
+                new ShoppingListSummaryDto(Guid.NewGuid(), "Weekly shop", "2026-05-28T10:00:00Z", 3)
+            ]);
+        var store = new InMemorySelectedPlanContextStore { SelectedPlanId = planId };
+        var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), new RecordingPromptService(confirmResult: false), store);
+
+        await viewModel.LoadAsync();
+
+        Assert.Equal(planId, api.LastRequestedPlanId);
+    }
+
+    [Fact]
+    public void ShoppingListPage_ShouldUseSharedBottomNavigation()
+    {
+        var pageXamlPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "src",
+            "DietPlanner.Mobile",
+            "Views",
+            "ShoppingListPage.xaml"));
+
+        var xaml = File.ReadAllText(pageXamlPath);
+
+        Assert.Contains("controls:MainBottomNav", xaml);
+        Assert.Contains("GoToHomeCommand", xaml);
+    }
+
+    [Fact]
+    public void ShoppingListPage_ShouldUseHeroHeaderAndStyledFooterText()
+    {
+        var pageXamlPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "src",
+            "DietPlanner.Mobile",
+            "Views",
+            "ShoppingListPage.xaml"));
+
+        var xaml = File.ReadAllText(pageXamlPath);
+
+        Assert.Contains("HeroCardBorderStyle", xaml);
+        Assert.Contains("HeroTitleStyle", xaml);
+        Assert.Contains("HeroBodyStyle", xaml);
+        Assert.Contains("Style=\"{StaticResource HeadlineBodyStyle}\"", xaml);
+    }
+
     private sealed class FakeShoppingListApiClient : IShoppingListApiClient
     {
         private readonly List<ShoppingListSummaryDto> _lists;
@@ -227,7 +299,12 @@ public sealed class ShoppingListViewModelTests
 
         public int ListCalls { get; private set; }
 
+        public Guid? LastRequestedPlanId { get; private set; }
+
         public Task<ShoppingListDetailsDto> CreateAsync(string name, IReadOnlyList<CreateShoppingListIngredientRequest> ingredientKeys, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<ShoppingListDetailsDto> CreateAsync(Guid? planId, string name, IReadOnlyList<CreateShoppingListIngredientRequest> ingredientKeys, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
         public Task DeleteAsync(Guid listId, CancellationToken cancellationToken = default)
@@ -240,11 +317,25 @@ public sealed class ShoppingListViewModelTests
         public Task<ShoppingListDetailsDto> GetDetailsAsync(Guid listId, CancellationToken cancellationToken = default)
             => Task.FromResult(_details);
 
+        public Task<ShoppingListDetailsDto> GetDetailsAsync(Guid listId, Guid? planId, CancellationToken cancellationToken = default)
+            => Task.FromResult(_details);
+
         public Task<IReadOnlyList<ShoppingListCreateDayOptionDto>> GetCreateOptionsAsync(CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<ShoppingListCreateDayOptionDto>> GetCreateOptionsAsync(Guid? planId, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
         public Task<IReadOnlyList<ShoppingListSummaryDto>> ListAsync(CancellationToken cancellationToken = default)
         {
+            LastRequestedPlanId = null;
+            ListCalls++;
+            return Task.FromResult<IReadOnlyList<ShoppingListSummaryDto>>(_lists.ToArray());
+        }
+
+        public Task<IReadOnlyList<ShoppingListSummaryDto>> ListAsync(Guid? planId, CancellationToken cancellationToken = default)
+        {
+            LastRequestedPlanId = planId;
             ListCalls++;
             return Task.FromResult<IReadOnlyList<ShoppingListSummaryDto>>(_lists.ToArray());
         }
@@ -263,6 +354,12 @@ public sealed class ShoppingListViewModelTests
         public Task GoToAsync(string route)
         {
             LastRoute = route;
+            return Task.CompletedTask;
+        }
+
+        public Task GoToMainTabAsync(MainAppTab tab)
+        {
+            LastRoute = tab == MainAppTab.Home ? "//home" : "//main/shopping-list";
             return Task.CompletedTask;
         }
     }

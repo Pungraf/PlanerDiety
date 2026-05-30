@@ -3,7 +3,7 @@ using DietPlanner.Application.Shopping.Commands;
 
 namespace DietPlanner.Application.Shopping.Queries;
 
-public sealed record GetShoppingListDetailsQuery(Guid UserId, Guid ShoppingListId);
+public sealed record GetShoppingListDetailsQuery(Guid UserId, Guid ShoppingListId, Guid? PlanId = null);
 
 public sealed class GetShoppingListDetailsHandler
 {
@@ -20,7 +20,9 @@ public sealed class GetShoppingListDetailsHandler
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        var plan = await _dbContext.FindReadableWeeklyPlanAsync(query.UserId, cancellationToken);
+        var plan = query.PlanId.HasValue
+            ? await _dbContext.FindWeeklyPlanByIdAsync(query.UserId, query.PlanId.Value, cancellationToken)
+            : await _dbContext.FindReadableWeeklyPlanAsync(query.UserId, cancellationToken);
         if (plan is null)
         {
             return null;

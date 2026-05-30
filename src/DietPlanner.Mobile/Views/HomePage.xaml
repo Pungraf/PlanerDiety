@@ -2,58 +2,132 @@
 <ContentPage
     x:Class="DietPlanner.Mobile.Views.HomePage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:controls="clr-namespace:DietPlanner.Mobile.Views.Controls"
+    xmlns:navigation="clr-namespace:DietPlanner.Mobile.Navigation"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:viewModels="clr-namespace:DietPlanner.Mobile.ViewModels"
     x:DataType="viewModels:HomeViewModel"
+    Shell.NavBarIsVisible="False"
+    Shell.TabBarIsVisible="False"
     Title="Home">
-    <ScrollView>
-        <VerticalStackLayout Padding="24" Spacing="16">
-            <Label FontAttributes="Bold" FontSize="28" Text="Today's plan" />
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Resources/Styles/MobileTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+    <Grid RowDefinitions="*,Auto" BackgroundColor="{StaticResource PageBackgroundColor}">
+    <ScrollView BackgroundColor="{StaticResource PageBackgroundColor}">
+        <VerticalStackLayout Padding="20" Spacing="18">
+            <Border Style="{StaticResource HeroCardBorderStyle}">
+                <VerticalStackLayout Spacing="6">
+                    <Label Style="{StaticResource HeroTitleStyle}" Text="Plan for the day" />
+                    <Label Style="{StaticResource HeroBodyStyle}" Text="Review meals, recipe details, and copy the day where needed." />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Style="{StaticResource CardBorderStyle}" Padding="16">
+                <VerticalStackLayout Spacing="12">
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12" IsVisible="{Binding HasFutureWeek}">
+                        <Button
+                            Grid.Column="0"
+                            Command="{Binding SelectCurrentWeekCommand}"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Text="Current week" />
+                        <Button
+                            Grid.Column="1"
+                            Command="{Binding SelectFutureWeekCommand}"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Text="Next week" />
+                    </Grid>
+                    <Label Style="{StaticResource HeadlineBodyStyle}" Text="{Binding SelectedWeekLabel}" />
+                    <Button
+                        Command="{Binding GenerateFutureWeekCommand}"
+                        IsVisible="{Binding CanGenerateFutureWeek}"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Text="Generate next week" />
+                </VerticalStackLayout>
+            </Border>
 
             <VerticalStackLayout
                 IsVisible="{Binding IsLoading}"
                 HorizontalOptions="Center"
                 Spacing="8">
                 <ActivityIndicator IsRunning="{Binding IsLoading}" />
-                <Label HorizontalTextAlignment="Center" Text="Loading today's plan..." />
+                <Label Style="{StaticResource HeadlineBodyStyle}" HorizontalTextAlignment="Center" Text="Loading today's plan..." />
             </VerticalStackLayout>
 
-            <Picker
-                Title="Select day"
-                ItemDisplayBinding="{Binding DisplayDate}"
-                ItemsSource="{Binding Days}"
-                SelectedItem="{Binding SelectedDay}" />
-
-            <Border
-                Padding="16"
-                StrokeThickness="0"
-                IsVisible="{Binding HasSelectedDay}">
-                <VerticalStackLayout Spacing="6">
-                    <Label FontAttributes="Bold" FontSize="18" Text="Daily totals" />
-                    <Label Text="{Binding SelectedDay.TotalKcal, StringFormat='Calories: {0} kcal'}" />
-                    <Label Text="{Binding SelectedDay.TotalProtein, StringFormat='Protein: {0} g'}" />
+            <Border Style="{StaticResource CardBorderStyle}" Padding="16">
+                <VerticalStackLayout Spacing="10">
+                    <Label Style="{StaticResource SectionTitleStyle}" Text="Selected day" />
+                    <Border Style="{StaticResource InputBorderStyle}">
+                        <VerticalStackLayout Spacing="6">
+                            <Label Style="{StaticResource InputCaptionStyle}" Text="DAY" />
+                            <Picker
+                                Title="Select day"
+                                ItemDisplayBinding="{Binding DisplayDate}"
+                                ItemsSource="{Binding Days}"
+                                SelectedItem="{Binding SelectedDay}" />
+                        </VerticalStackLayout>
+                    </Border>
                 </VerticalStackLayout>
             </Border>
 
+            <Border
+                Style="{StaticResource CardBorderStyle}"
+                Padding="16"
+                IsVisible="{Binding HasSelectedDay}">
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <Border
+                        Grid.Column="0"
+                        BackgroundColor="{StaticResource AccentSoftColor}"
+                        Padding="14"
+                        StrokeThickness="0">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Style="{StaticResource InputCaptionStyle}" Text="Calories" TextColor="{StaticResource AccentColor}" />
+                            <Label Style="{StaticResource ValueLabelStyle}" Text="{Binding SelectedDay.TotalKcal, StringFormat='{0} kcal'}" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border
+                        Grid.Column="1"
+                        BackgroundColor="{StaticResource HighlightSoftColor}"
+                        Padding="14"
+                        StrokeThickness="0">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Style="{StaticResource InputCaptionStyle}" Text="Protein" TextColor="{StaticResource HighlightColor}" />
+                            <Label Style="{StaticResource ValueLabelStyle}" Text="{Binding SelectedDay.TotalProtein, StringFormat='{0} g'}" />
+                        </VerticalStackLayout>
+                    </Border>
+                </Grid>
+            </Border>
+
             <VerticalStackLayout Spacing="10" IsVisible="{Binding HasSelectedDay}">
-                <Label FontAttributes="Bold" FontSize="18" Text="Meals" />
-                <CollectionView ItemsSource="{Binding SelectedDay.Meals}" SelectionMode="None">
+                <Label Style="{StaticResource SectionTitleStyle}" Text="Meals" />
+                <CollectionView BackgroundColor="{StaticResource PageBackgroundColor}" ItemsSource="{Binding SelectedDay.Meals}" SelectionMode="None">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="viewModels:HomeMealSlotViewModel">
-                            <Border Padding="16" StrokeThickness="0">
+                            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,12">
                                 <Border.GestureRecognizers>
                                     <TapGestureRecognizer
                                         Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenMealDetailsCommand}"
                                         CommandParameter="{Binding .}" />
                                 </Border.GestureRecognizers>
-                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                                    <VerticalStackLayout Spacing="4">
-                                        <Label FontAttributes="Bold" Text="{Binding SlotLabel}" />
-                                        <Label Text="{Binding Name}" />
-                                        <Label Text="{Binding MacroSummary}" />
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" RowDefinitions="Auto,Auto">
+                                    <VerticalStackLayout Spacing="8">
+                                        <Border
+                                            BackgroundColor="{StaticResource AccentSoftColor}"
+                                            HorizontalOptions="Start"
+                                            Padding="10,4"
+                                            StrokeThickness="0">
+                                            <Label Text="{Binding SlotLabel}" TextColor="{StaticResource AccentColor}" FontAttributes="Bold" />
+                                        </Border>
+                                        <Label FontAttributes="Bold" FontSize="18" Text="{Binding Name}" TextColor="{StaticResource PrimaryTextColor}" />
+                                        <Label Style="{StaticResource HeadlineBodyStyle}" Text="{Binding MacroSummary}" />
                                     </VerticalStackLayout>
                                     <Button
                                         Grid.Column="1"
+                                        Style="{StaticResource SecondaryButtonStyle}"
                                         VerticalOptions="Center"
                                         Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenMealSearchCommand}"
                                         CommandParameter="{Binding .}"
@@ -66,24 +140,52 @@
             </VerticalStackLayout>
 
             <VerticalStackLayout Spacing="10" IsVisible="{Binding HasSelectedDay}">
-                <Label FontAttributes="Bold" FontSize="18" Text="Copy selected day to" />
-                <CollectionView ItemsSource="{Binding Days}" SelectionMode="None">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="viewModels:HomeDayViewModel">
-                            <Grid ColumnDefinitions="*,Auto" Padding="0,4">
-                                <Label Text="{Binding DisplayDate}" VerticalOptions="Center" />
-                                <Button
-                                    Grid.Column="1"
-                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.CopyDayCommand}"
-                                    CommandParameter="{Binding .}"
-                                    Text="Copy here" />
-                            </Grid>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                <Label Style="{StaticResource SectionTitleStyle}" Text="Copy selected day" />
+                <Button
+                    Command="{Binding OpenCopyDayCommand}"
+                    HorizontalOptions="Start"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Text="Choose target day" />
+
+                <Border
+                    Style="{StaticResource CardBorderStyle}"
+                    Padding="16"
+                    IsVisible="{Binding IsCopyDayPickerOpen}">
+                    <VerticalStackLayout Spacing="12">
+                        <Label Style="{StaticResource SectionTitleStyle}" Text="Copy to" />
+                        <Label Style="{StaticResource HeadlineBodyStyle}" Text="Pick the destination day and replace its meals with the selected day." />
+                        <Border Style="{StaticResource InputBorderStyle}">
+                            <VerticalStackLayout Spacing="6">
+                                <Label Style="{StaticResource InputCaptionStyle}" Text="TARGET DAY" />
+                                <Picker
+                                    Title="Select target day"
+                                    ItemDisplayBinding="{Binding DisplayDate}"
+                                    ItemsSource="{Binding AvailableCopyTargetDays}"
+                                    SelectedItem="{Binding CopyTargetDay}" />
+                            </VerticalStackLayout>
+                        </Border>
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                            <Button
+                                Command="{Binding CancelCopyDayCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Text="Cancel" />
+                            <Button
+                                Grid.Column="1"
+                                Command="{Binding ConfirmCopyDayCommand}"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                Text="Copy day" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
             </VerticalStackLayout>
 
-            <Label TextColor="IndianRed" Text="{Binding ErrorMessage}" />
+            <Label TextColor="{StaticResource DangerColor}" Text="{Binding ErrorMessage}" />
         </VerticalStackLayout>
     </ScrollView>
+    <controls:MainBottomNav
+        Grid.Row="1"
+        ActiveTab="{x:Static navigation:MainAppTab.Home}"
+        GoToHomeCommand="{Binding GoToHomeCommand}"
+        GoToShoppingListsCommand="{Binding GoToShoppingListsCommand}" />
+    </Grid>
 </ContentPage>

@@ -25,7 +25,7 @@ public sealed class HomeViewModelTests
                             new PlanMealSlotDto("dinner", Guid.NewGuid(), "Salmon Potatoes", 600, 35)
                         ])
                 ]));
-        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new RecordingPromptService(false), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore());
+        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new RecordingPromptService(false), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore(), new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
 
@@ -49,7 +49,7 @@ public sealed class HomeViewModelTests
                 [
                     new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Today breakfast", 500, 30)
                 ]));
-        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new RecordingPromptService(false), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore());
+        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new RecordingPromptService(false), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore(), new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
 
@@ -74,7 +74,7 @@ public sealed class HomeViewModelTests
                 [
                     new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Toast", 250, 10)
                 ]));
-        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new RecordingPromptService(false), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore());
+        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new RecordingPromptService(false), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore(), new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         await viewModel.OpenCopyDayCommand.ExecuteAsync(null);
@@ -99,7 +99,7 @@ public sealed class HomeViewModelTests
                 [new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Source", 500, 30)],
                 targetDate,
                 [new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Target", 250, 10)]));
-        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new RecordingPromptService(false), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore());
+        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new RecordingPromptService(false), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore(), new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         await viewModel.OpenCopyDayCommand.ExecuteAsync(null);
@@ -124,7 +124,7 @@ public sealed class HomeViewModelTests
             ThrowLinkedShoppingListConflictOnFirstCopy = true
         };
         var prompts = new RecordingPromptService(true);
-        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), prompts, new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore());
+        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), prompts, new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore(), new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         await viewModel.OpenCopyDayCommand.ExecuteAsync(null);
@@ -156,7 +156,7 @@ public sealed class HomeViewModelTests
                 ]));
         var navigator = new RecordingNavigator();
         var mealDetailsStore = new InMemoryMealDetailsContextStore();
-        var viewModel = new HomeViewModel(plansClient, navigator, new RecordingPromptService(false), new InMemoryMealSearchContextStore(), mealDetailsStore);
+        var viewModel = new HomeViewModel(plansClient, navigator, new RecordingPromptService(false), new InMemoryMealSearchContextStore(), mealDetailsStore, new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         await viewModel.OpenMealDetailsCommand.ExecuteAsync(viewModel.SelectedDay!.Meals.First());
@@ -183,7 +183,7 @@ public sealed class HomeViewModelTests
                 ]));
         var navigator = new RecordingNavigator();
         var mealDetailsStore = new InMemoryMealDetailsContextStore();
-        var viewModel = new HomeViewModel(plansClient, navigator, new RecordingPromptService(false), new InMemoryMealSearchContextStore(), mealDetailsStore);
+        var viewModel = new HomeViewModel(plansClient, navigator, new RecordingPromptService(false), new InMemoryMealSearchContextStore(), mealDetailsStore, new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
         await viewModel.OpenMealDetailsCommand.ExecuteAsync(viewModel.SelectedDay!.Meals.First());
@@ -211,7 +211,7 @@ public sealed class HomeViewModelTests
                 ]));
         var navigator = new ThrowingNavigator(new InvalidOperationException("Navigation failed."));
         var mealDetailsStore = new InMemoryMealDetailsContextStore();
-        var viewModel = new HomeViewModel(plansClient, navigator, new RecordingPromptService(false), new InMemoryMealSearchContextStore(), mealDetailsStore);
+        var viewModel = new HomeViewModel(plansClient, navigator, new RecordingPromptService(false), new InMemoryMealSearchContextStore(), mealDetailsStore, new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
 
@@ -239,7 +239,7 @@ public sealed class HomeViewModelTests
                             new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Oats Bowl", 500, 30)
                         ])
                 ]));
-        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new RecordingPromptService(false), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore());
+        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new RecordingPromptService(false), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore(), new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
 
@@ -261,7 +261,7 @@ public sealed class HomeViewModelTests
                         DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd"),
                         [new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Oats Bowl", 500, 30)])
                 ]));
-        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new RecordingPromptService(false), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore());
+        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new RecordingPromptService(false), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore(), new InMemorySelectedPlanContextStore());
 
         await viewModel.LoadAsync();
 
@@ -282,11 +282,63 @@ public sealed class HomeViewModelTests
                         [new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Oats Bowl", 500, 30)])
                 ]));
         var navigator = new RecordingNavigator();
-        var viewModel = new HomeViewModel(plansClient, navigator, new RecordingPromptService(false), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore());
+        var viewModel = new HomeViewModel(plansClient, navigator, new RecordingPromptService(false), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore(), new InMemorySelectedPlanContextStore());
 
         await viewModel.GoToShoppingListsCommand.ExecuteAsync(null);
 
         Assert.Equal("//main/shopping-list", navigator.LastRoute);
+    }
+
+    [Fact]
+    public async Task LoadAsync_ShouldShowGenerateButtonWhenAllowed()
+    {
+        var currentPlan = CreatePlan(
+            new DateOnly(2026, 5, 25),
+            [new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Current breakfast", 500, 30)],
+            new DateOnly(2026, 5, 26),
+            [new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Current next day", 450, 25)]);
+        var plansClient = new FakePlansApiClient(currentPlan)
+        {
+            PlanningState = new PlanningStateDto(currentPlan, null, true)
+        };
+        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new RecordingPromptService(false), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore(), new InMemorySelectedPlanContextStore());
+
+        await viewModel.LoadAsync();
+
+        Assert.True(viewModel.CanGenerateFutureWeek);
+    }
+
+    [Fact]
+    public async Task SelectFutureWeekCommand_ShouldChangeSelectedPlanAndDays()
+    {
+        var currentPlan = CreatePlan(
+            new DateOnly(2026, 5, 25),
+            [new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Current breakfast", 500, 30)],
+            new DateOnly(2026, 5, 26),
+            [new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Current next day", 450, 25)]);
+        var futurePlan = new CurrentPlanDto(
+            Guid.NewGuid(),
+            "future",
+            "2026-06-01",
+            [
+                new PlanDayDto(
+                    "2026-06-01",
+                    [new PlanMealSlotDto("breakfast", Guid.NewGuid(), "Future breakfast", 600, 40)])
+            ]);
+        var plansClient = new FakePlansApiClient(currentPlan)
+        {
+            PlanningState = new PlanningStateDto(currentPlan, futurePlan, false)
+        };
+        var store = new InMemorySelectedPlanContextStore();
+        var viewModel = new HomeViewModel(plansClient, new RecordingNavigator(), new RecordingPromptService(false), new InMemoryMealSearchContextStore(), new InMemoryMealDetailsContextStore(), store);
+
+        await viewModel.LoadAsync();
+        await viewModel.SelectFutureWeekCommand.ExecuteAsync(null);
+
+        Assert.Equal(futurePlan.Id, viewModel.SelectedPlanId);
+        Assert.Equal(futurePlan.Id, store.SelectedPlanId);
+        Assert.Equal("Future breakfast", viewModel.SelectedDay!.Meals.Single().Name);
+        Assert.True(viewModel.IsFutureWeekSelected);
     }
 
     [Fact]
@@ -351,10 +403,17 @@ public sealed class HomeViewModelTests
     private sealed class FakePlansApiClient : IPlansApiClient
     {
         private CurrentPlanDto _plan;
+        private PlanningStateDto? _planningState;
 
         public FakePlansApiClient(CurrentPlanDto plan)
         {
             _plan = plan;
+        }
+
+        public PlanningStateDto PlanningState
+        {
+            get => _planningState ?? new PlanningStateDto(_plan, null, false);
+            set => _planningState = value;
         }
 
         public DateOnly? LastCopiedSourceDate { get; private set; }
@@ -366,6 +425,8 @@ public sealed class HomeViewModelTests
         public bool ThrowLinkedShoppingListConflictOnFirstCopy { get; set; }
 
         public int CopyCalls { get; private set; }
+
+        public int GenerateFutureCalls { get; private set; }
 
         public List<(DateOnly SourceDate, DateOnly TargetDate, bool DeleteLinkedShoppingLists)> CopyRequests { get; } = [];
 
@@ -405,6 +466,11 @@ public sealed class HomeViewModelTests
             return Task.FromResult(_plan);
         }
 
+        public Task<PlanningStateDto> GetPlanningStateAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(PlanningState);
+        }
+
         public Task<IReadOnlyList<MealSummaryDto>> SearchMealsAsync(string? query, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
@@ -428,6 +494,12 @@ public sealed class HomeViewModelTests
         public Task ReplaceMealAsync(Guid planId, DateOnly date, string slotType, Guid mealId, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
+        }
+
+        public Task<PlanningStateDto> GenerateFutureWeekAsync(CancellationToken cancellationToken = default)
+        {
+            GenerateFutureCalls++;
+            return Task.FromResult(PlanningState);
         }
     }
 

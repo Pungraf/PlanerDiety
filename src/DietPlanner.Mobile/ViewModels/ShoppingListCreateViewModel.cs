@@ -11,15 +11,20 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
 {
     private readonly IShoppingListApiClient _shoppingListApiClient;
     private readonly IAppNavigator _navigator;
+    private readonly ISelectedPlanContextStore _selectedPlanContextStore;
     private bool _hasCreatedCurrentSelection;
     private string? _errorMessage;
     private ShoppingListCreatePreset? _selectedPreset;
     private ShoppingListCreateStep _currentStep = ShoppingListCreateStep.Preset;
 
-    public ShoppingListCreateViewModel(IShoppingListApiClient shoppingListApiClient, IAppNavigator navigator)
+    public ShoppingListCreateViewModel(
+        IShoppingListApiClient shoppingListApiClient,
+        IAppNavigator navigator,
+        ISelectedPlanContextStore selectedPlanContextStore)
     {
         _shoppingListApiClient = shoppingListApiClient;
         _navigator = navigator;
+        _selectedPlanContextStore = selectedPlanContextStore;
         LoadCommand = new AsyncCommand(_ => LoadAsync());
         ToggleMealCommand = new AsyncCommand(meal =>
         {
@@ -109,7 +114,7 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
     {
         _hasCreatedCurrentSelection = false;
         ErrorMessage = null;
-        var options = await _shoppingListApiClient.GetCreateOptionsAsync(cancellationToken);
+        var options = await _shoppingListApiClient.GetCreateOptionsAsync(_selectedPlanContextStore.SelectedPlanId, cancellationToken);
         Days.Clear();
         foreach (var day in options.Select(MapDay))
         {
@@ -141,7 +146,7 @@ public sealed class ShoppingListCreateViewModel : INotifyPropertyChanged
 
         try
         {
-            await _shoppingListApiClient.CreateAsync("Shopping list", selectedIngredients, cancellationToken);
+            await _shoppingListApiClient.CreateAsync(_selectedPlanContextStore.SelectedPlanId, "Shopping list", selectedIngredients, cancellationToken);
             _hasCreatedCurrentSelection = true;
         }
         catch (Exception exception)

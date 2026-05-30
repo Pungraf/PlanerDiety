@@ -8,11 +8,19 @@ public interface IShoppingListApiClient
 {
     Task<IReadOnlyList<ShoppingListSummaryDto>> ListAsync(CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<ShoppingListSummaryDto>> ListAsync(Guid? planId, CancellationToken cancellationToken = default);
+
     Task<ShoppingListDetailsDto> GetDetailsAsync(Guid listId, CancellationToken cancellationToken = default);
+
+    Task<ShoppingListDetailsDto> GetDetailsAsync(Guid listId, Guid? planId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<ShoppingListCreateDayOptionDto>> GetCreateOptionsAsync(CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<ShoppingListCreateDayOptionDto>> GetCreateOptionsAsync(Guid? planId, CancellationToken cancellationToken = default);
+
     Task<ShoppingListDetailsDto> CreateAsync(string name, IReadOnlyList<CreateShoppingListIngredientRequest> ingredientKeys, CancellationToken cancellationToken = default);
+
+    Task<ShoppingListDetailsDto> CreateAsync(Guid? planId, string name, IReadOnlyList<CreateShoppingListIngredientRequest> ingredientKeys, CancellationToken cancellationToken = default);
 
     Task DeleteAsync(Guid listId, CancellationToken cancellationToken = default);
 
@@ -32,7 +40,12 @@ public sealed class ShoppingListApiClient : IShoppingListApiClient
 
     public async Task<IReadOnlyList<ShoppingListSummaryDto>> ListAsync(CancellationToken cancellationToken = default)
     {
-        using var request = CreateRequest(HttpMethod.Get, "api/shopping-lists");
+        return await ListAsync(planId: null, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ShoppingListSummaryDto>> ListAsync(Guid? planId, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Get, WithPlanQuery("api/shopping-lists", planId));
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
@@ -42,7 +55,12 @@ public sealed class ShoppingListApiClient : IShoppingListApiClient
 
     public async Task<ShoppingListDetailsDto> GetDetailsAsync(Guid listId, CancellationToken cancellationToken = default)
     {
-        using var request = CreateRequest(HttpMethod.Get, $"api/shopping-lists/{listId}");
+        return await GetDetailsAsync(listId, planId: null, cancellationToken);
+    }
+
+    public async Task<ShoppingListDetailsDto> GetDetailsAsync(Guid listId, Guid? planId, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Get, WithPlanQuery($"api/shopping-lists/{listId}", planId));
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
@@ -52,7 +70,12 @@ public sealed class ShoppingListApiClient : IShoppingListApiClient
 
     public async Task<IReadOnlyList<ShoppingListCreateDayOptionDto>> GetCreateOptionsAsync(CancellationToken cancellationToken = default)
     {
-        using var request = CreateRequest(HttpMethod.Get, "api/shopping-lists/create-options");
+        return await GetCreateOptionsAsync(planId: null, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ShoppingListCreateDayOptionDto>> GetCreateOptionsAsync(Guid? planId, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Get, WithPlanQuery("api/shopping-lists/create-options", planId));
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
@@ -62,7 +85,12 @@ public sealed class ShoppingListApiClient : IShoppingListApiClient
 
     public async Task<ShoppingListDetailsDto> CreateAsync(string name, IReadOnlyList<CreateShoppingListIngredientRequest> ingredientKeys, CancellationToken cancellationToken = default)
     {
-        using var request = CreateRequest(HttpMethod.Post, "api/shopping-lists");
+        return await CreateAsync(planId: null, name, ingredientKeys, cancellationToken);
+    }
+
+    public async Task<ShoppingListDetailsDto> CreateAsync(Guid? planId, string name, IReadOnlyList<CreateShoppingListIngredientRequest> ingredientKeys, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, WithPlanQuery("api/shopping-lists", planId));
         request.Content = JsonContent.Create(new CreateShoppingListRequest(name, ingredientKeys));
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -99,6 +127,13 @@ public sealed class ShoppingListApiClient : IShoppingListApiClient
         var request = new HttpRequestMessage(method, endpoint);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return request;
+    }
+
+    private static string WithPlanQuery(string endpoint, Guid? planId)
+    {
+        return planId.HasValue
+            ? $"{endpoint}?planId={planId.Value:D}"
+            : endpoint;
     }
 }
 

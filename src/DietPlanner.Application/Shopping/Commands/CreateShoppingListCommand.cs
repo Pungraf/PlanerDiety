@@ -7,7 +7,7 @@ namespace DietPlanner.Application.Shopping.Commands;
 
 public sealed record SelectedShoppingIngredient(DateOnly Date, MealSlotType SlotType, Guid IngredientId);
 
-public sealed record CreateShoppingListCommand(Guid UserId, string Name, IReadOnlyList<SelectedShoppingIngredient> Ingredients);
+public sealed record CreateShoppingListCommand(Guid UserId, Guid? PlanId, string Name, IReadOnlyList<SelectedShoppingIngredient> Ingredients);
 
 public sealed class CreateShoppingListHandler
 {
@@ -24,7 +24,9 @@ public sealed class CreateShoppingListHandler
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        var plan = await _dbContext.FindReadableWeeklyPlanAsync(command.UserId, cancellationToken);
+        var plan = command.PlanId.HasValue
+            ? await _dbContext.FindWeeklyPlanByIdAsync(command.UserId, command.PlanId.Value, cancellationToken)
+            : await _dbContext.FindReadableWeeklyPlanAsync(command.UserId, cancellationToken);
         if (plan is null)
         {
             return null;

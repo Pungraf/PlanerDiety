@@ -47,6 +47,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<ISessionStore, InMemorySessionStore>();
         builder.Services.AddSingleton<IMealSearchContextStore, InMemoryMealSearchContextStore>();
         builder.Services.AddSingleton<IMealDetailsContextStore, InMemoryMealDetailsContextStore>();
+        builder.Services.AddSingleton<ISelectedPlanContextStore, InMemorySelectedPlanContextStore>();
         builder.Services.AddSingleton<IUserPromptService, ShellUserPromptService>();
         builder.Services.AddSingleton<IAppNavigator, ShellNavigator>();
         builder.Services.AddTransient<LoginViewModel>();
