@@ -37,6 +37,26 @@ public class WeeklyPlan
             WeeklyPlanStatus.Draft);
     }
 
+    public static WeeklyPlan CreateCurrent(Guid userId, DateOnly startDate, DinnerMode dinnerMode)
+    {
+        return new WeeklyPlan(
+            Guid.NewGuid(),
+            Guard.AgainstEmpty(userId, nameof(userId)),
+            startDate,
+            Guard.AgainstUndefinedEnum(dinnerMode, nameof(dinnerMode)),
+            WeeklyPlanStatus.Current);
+    }
+
+    public static WeeklyPlan CreateFuture(Guid userId, DateOnly startDate, DinnerMode dinnerMode)
+    {
+        return new WeeklyPlan(
+            Guid.NewGuid(),
+            Guard.AgainstEmpty(userId, nameof(userId)),
+            startDate,
+            Guard.AgainstUndefinedEnum(dinnerMode, nameof(dinnerMode)),
+            WeeklyPlanStatus.Future);
+    }
+
     public void Activate()
     {
         if (Status != WeeklyPlanStatus.Draft)
@@ -45,6 +65,16 @@ public class WeeklyPlan
         }
 
         Status = WeeklyPlanStatus.Active;
+    }
+
+    public void PromoteFutureToCurrent()
+    {
+        if (Status != WeeklyPlanStatus.Future)
+        {
+            throw new InvalidOperationException("Only future plans can be promoted.");
+        }
+
+        Status = WeeklyPlanStatus.Current;
     }
 
     public bool CopyDay(DateOnly sourceDate, DateOnly targetDate)
