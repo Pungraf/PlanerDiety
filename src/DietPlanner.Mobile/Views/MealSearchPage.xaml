@@ -6,24 +6,45 @@
     xmlns:viewModels="clr-namespace:DietPlanner.Mobile.ViewModels"
     x:DataType="viewModels:MealSearchViewModel"
     Title="Meal search">
-    <CollectionView ItemsSource="{Binding Meals}" SelectionMode="None">
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Resources/Styles/MobileTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+    <CollectionView BackgroundColor="{StaticResource PageBackgroundColor}" ItemsSource="{Binding Meals}" SelectionMode="None">
         <CollectionView.Header>
-            <VerticalStackLayout Padding="24" Spacing="16">
-                <Label FontAttributes="Bold" FontSize="28" Text="{Binding ScreenTitle}" />
-                <Label Text="{Binding CurrentMealName, StringFormat='Current: {0}'}" />
+            <VerticalStackLayout Padding="20" Spacing="16">
+                <Label Style="{StaticResource PageTitleStyle}" Text="{Binding ScreenTitle}" />
+                <Border Style="{StaticResource CardBorderStyle}" Padding="16">
+                    <VerticalStackLayout Spacing="6">
+                        <Label Style="{StaticResource HeadlineBodyStyle}" Text="Current meal" />
+                        <Label Style="{StaticResource SectionTitleStyle}" Text="{Binding CurrentMealName}" />
+                    </VerticalStackLayout>
+                </Border>
                 <SearchBar Placeholder="Search meals" Text="{Binding SearchText}" />
-                <Label TextColor="IndianRed" Text="{Binding ErrorMessage}" />
+                <Label TextColor="{StaticResource DangerColor}" Text="{Binding ErrorMessage}" />
             </VerticalStackLayout>
         </CollectionView.Header>
         <CollectionView.ItemTemplate>
             <DataTemplate x:DataType="viewModels:MealSearchMealViewModel">
-                <Border Margin="24,0,24,12" Padding="16" StrokeThickness="0">
-                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                        <Label FontAttributes="Bold" Text="{Binding Name}" />
-                        <Label Grid.Row="1" Text="{Binding MacroSummary}" />
+                <Border Style="{StaticResource CardBorderStyle}" Margin="20,0,20,12" Padding="16">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10">
+                        <Label FontAttributes="Bold" FontSize="17" Text="{Binding Name}" TextColor="{StaticResource PrimaryTextColor}" />
+                        <Border
+                            Grid.Row="1"
+                            BackgroundColor="{StaticResource AccentSoftColor}"
+                            HorizontalOptions="Start"
+                            Padding="10,4"
+                            StrokeThickness="0">
+                            <Label Text="{Binding Type}" TextColor="{StaticResource AccentColor}" />
+                        </Border>
+                        <Label Grid.Row="2" Style="{StaticResource HeadlineBodyStyle}" Text="{Binding MacroSummary}" />
                         <Button
                             Grid.Column="1"
-                            Grid.RowSpan="2"
+                            Grid.RowSpan="3"
+                            Style="{StaticResource PrimaryButtonStyle}"
                             Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ReplaceMealCommand}"
                             CommandParameter="{Binding .}"
                             Text="Use meal" />

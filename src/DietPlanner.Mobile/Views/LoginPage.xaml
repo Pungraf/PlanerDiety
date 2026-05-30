@@ -3,13 +3,50 @@
     x:Class="DietPlanner.Mobile.Views.LoginPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:viewModels="clr-namespace:DietPlanner.Mobile.ViewModels"
+    x:DataType="viewModels:LoginViewModel"
+    Shell.NavBarIsVisible="False"
     Title="Sign in">
-    <ScrollView>
-        <VerticalStackLayout Padding="24" Spacing="20" VerticalOptions="Center">
-            <Label FontAttributes="Bold" FontSize="30" Text="Diet Planner" />
-            <Label Text="Sign in with Google to sync your plan from the API." />
-            <Button Command="{Binding LoginWithGoogleCommand}" Text="Continue with Google" />
-            <Label Text="{Binding ErrorMessage}" TextColor="Red" />
-        </VerticalStackLayout>
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Resources/Styles/MobileTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+    <ScrollView BackgroundColor="{StaticResource PageBackgroundColor}">
+        <Grid Padding="24">
+            <VerticalStackLayout Spacing="24" VerticalOptions="Center">
+                <VerticalStackLayout Spacing="10">
+                    <HorizontalStackLayout HorizontalOptions="Center" Spacing="12">
+                        <Image
+                            HeightRequest="72"
+                            Source="miauplanner_logo.svg"
+                            WidthRequest="72" />
+                        <VerticalStackLayout Spacing="0" VerticalOptions="Center">
+                            <Label Style="{StaticResource InputCaptionStyle}" Text="WEEKLY PLANNING" TextColor="{StaticResource AccentColor}" />
+                            <Label Style="{StaticResource HeroTitleStyle}">
+                                <Label.FormattedText>
+                                    <FormattedString>
+                                        <Span Text="Miau" TextColor="{StaticResource AccentColor}" FontSize="34" FontAttributes="Bold" />
+                                        <Span Text="Planner" TextColor="{StaticResource HighlightColor}" FontSize="34" FontAttributes="Bold" />
+                                    </FormattedString>
+                                </Label.FormattedText>
+                            </Label>
+                        </VerticalStackLayout>
+                    </HorizontalStackLayout>
+                    <Label Style="{StaticResource HeadlineBodyStyle}" Text="Sign in with Google to sync your plan, recipes, and shopping lists from the API." />
+                </VerticalStackLayout>
+
+                <Border Style="{StaticResource CardBorderStyle}" Padding="18">
+                    <VerticalStackLayout Spacing="14">
+                        <Label Style="{StaticResource SectionTitleStyle}" Text="Sign in" />
+                        <Label Style="{StaticResource HeadlineBodyStyle}" Text="Use the same Google account that is linked with your planner backend." />
+                        <Button Command="{Binding LoginWithGoogleCommand}" Style="{StaticResource PrimaryButtonStyle}" Text="Continue with Google" />
+                        <Label Text="{Binding ErrorMessage}" TextColor="{StaticResource DangerColor}" />
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+        </Grid>
     </ScrollView>
 </ContentPage>

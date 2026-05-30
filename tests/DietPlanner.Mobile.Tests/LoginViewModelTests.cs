@@ -41,6 +41,28 @@ public sealed class LoginViewModelTests
         Assert.Null(navigator.LastRoute);
     }
 
+    [Fact]
+    public void LoginPage_ShouldShowBrandedLogoAndWordmark()
+    {
+        var xamlPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "src",
+            "DietPlanner.Mobile",
+            "Views",
+            "LoginPage.xaml"));
+
+        var xaml = File.ReadAllText(xamlPath);
+
+        Assert.Contains("miauplanner_logo.svg", xaml);
+        Assert.Contains("HeroTitleStyle", xaml);
+        Assert.Contains("FormattedString", xaml);
+    }
+
     private sealed class FakeAuthApiClient : IAuthApiClient
     {
         private readonly AuthSession _session;
@@ -90,6 +112,12 @@ public sealed class LoginViewModelTests
         public Task GoToAsync(string route)
         {
             LastRoute = route;
+            return Task.CompletedTask;
+        }
+
+        public Task GoToMainTabAsync(MainAppTab tab)
+        {
+            LastRoute = tab == MainAppTab.Home ? "//home" : "//main/shopping-list";
             return Task.CompletedTask;
         }
     }

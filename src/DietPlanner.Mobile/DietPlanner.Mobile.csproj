@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" />
+    <MauiImage Include="Resources\Images\*.svg" />
     <PackageReference Include="Microsoft.Maui.Controls" Version="8.0.100" />
   </ItemGroup>
 
@@ -19,7 +21,7 @@
     <UseMaui>true</UseMaui>
     <SingleProject>true</SingleProject>
     <MauiEnableXamlCBindingWithSourceCompilation>true</MauiEnableXamlCBindingWithSourceCompilation>
-    <ApplicationTitle>DietPlanner.Mobile</ApplicationTitle>
+    <ApplicationTitle>MiauPlanner</ApplicationTitle>
     <ApplicationId>com.johny.dietplanner.mobile</ApplicationId>
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>

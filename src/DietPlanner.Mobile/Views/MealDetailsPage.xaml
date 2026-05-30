@@ -4,10 +4,31 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Recipe">
-    <Grid RowDefinitions="Auto,*" Padding="20">
-        <VerticalStackLayout Spacing="12">
-            <Label FontSize="26" FontAttributes="Bold" Text="{Binding Name}" />
-            <Label Text="{Binding MacroSummary}" />
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Resources/Styles/MobileTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+    <Grid RowDefinitions="Auto,*" Padding="20" BackgroundColor="{StaticResource PageBackgroundColor}">
+        <VerticalStackLayout Spacing="14">
+            <Label Style="{StaticResource PageTitleStyle}" Text="{Binding Name}" />
+            <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="10">
+                <Border
+                    BackgroundColor="{StaticResource AccentSoftColor}"
+                    Padding="12,6"
+                    StrokeThickness="0">
+                    <Label Text="{Binding Kcal, StringFormat='{0} kcal'}" TextColor="{StaticResource AccentColor}" FontAttributes="Bold" />
+                </Border>
+                <Border
+                    Grid.Column="1"
+                    BackgroundColor="{StaticResource HighlightSoftColor}"
+                    Padding="12,6"
+                    StrokeThickness="0">
+                    <Label Text="{Binding Protein, StringFormat='{0} g protein'}" TextColor="{StaticResource HighlightColor}" FontAttributes="Bold" />
+                </Border>
+            </Grid>
         </VerticalStackLayout>
 
         <Grid Grid.Row="1" Margin="0,16,0,0">
@@ -17,42 +38,51 @@
                 Spacing="12"
                 VerticalOptions="Center">
                 <ActivityIndicator IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}" />
-                <Label HorizontalTextAlignment="Center" Text="Loading recipe..." />
+                <Label Style="{StaticResource HeadlineBodyStyle}" HorizontalTextAlignment="Center" Text="Loading recipe..." />
             </VerticalStackLayout>
 
             <VerticalStackLayout
                 IsVisible="{Binding HasError}"
                 Spacing="12"
                 VerticalOptions="Center">
-                <Label FontAttributes="Bold" HorizontalTextAlignment="Center" Text="Could not load recipe" />
-                <Label HorizontalTextAlignment="Center" Text="{Binding ErrorMessage}" />
+                <Label Style="{StaticResource SectionTitleStyle}" HorizontalTextAlignment="Center" Text="Could not load recipe" />
+                <Label Style="{StaticResource HeadlineBodyStyle}" HorizontalTextAlignment="Center" Text="{Binding ErrorMessage}" />
             </VerticalStackLayout>
 
-            <CollectionView IsVisible="{Binding HasContent}" ItemsSource="{Binding Ingredients}">
+            <CollectionView BackgroundColor="{StaticResource PageBackgroundColor}" IsVisible="{Binding HasContent}" ItemsSource="{Binding Ingredients}">
                 <CollectionView.Header>
                     <VerticalStackLayout Spacing="12">
-                        <Label FontAttributes="Bold" Text="Ingredients" />
+                        <Label Style="{StaticResource SectionTitleStyle}" Text="Ingredients" />
+                        <Label Style="{StaticResource HeadlineBodyStyle}" Text="Tap back when you want to return to the day plan." />
                     </VerticalStackLayout>
                 </CollectionView.Header>
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
-                        <Grid Padding="0,8" ColumnDefinitions="*,Auto">
-                            <VerticalStackLayout>
-                                <Label FontAttributes="Bold" Text="{Binding Name}" />
-                                <Label Text="{Binding Category}" />
-                            </VerticalStackLayout>
-                            <Label Grid.Column="1" Text="{Binding QuantityText}" VerticalOptions="Center" />
-                        </Grid>
+                        <Border Style="{StaticResource CardBorderStyle}" Padding="14" Margin="0,0,0,10">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <VerticalStackLayout Spacing="6">
+                                    <Label FontAttributes="Bold" FontSize="16" Text="{Binding Name}" TextColor="{StaticResource PrimaryTextColor}" />
+                                    <Border
+                                        BackgroundColor="{StaticResource AccentSoftColor}"
+                                        HorizontalOptions="Start"
+                                        Padding="10,4"
+                                        StrokeThickness="0">
+                                        <Label Text="{Binding Category}" TextColor="{StaticResource AccentColor}" />
+                                    </Border>
+                                </VerticalStackLayout>
+                                <Label Grid.Column="1" Text="{Binding QuantityText}" VerticalOptions="Center" TextColor="{StaticResource SecondaryTextColor}" />
+                            </Grid>
+                        </Border>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
                 <CollectionView.Footer>
                     <VerticalStackLayout Padding="0,12,0,0" Spacing="8">
-                        <Label FontAttributes="Bold" Text="Preparation" />
+                        <Label Style="{StaticResource SectionTitleStyle}" Text="Preparation" />
                         <VerticalStackLayout BindableLayout.ItemsSource="{Binding PreparationSteps}" Spacing="8">
                             <BindableLayout.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Padding="12" StrokeThickness="0">
-                                        <Label Text="{Binding Text}" LineBreakMode="WordWrap" />
+                                    <Border Style="{StaticResource CardBorderStyle}" Padding="12">
+                                        <Label Text="{Binding Text}" LineBreakMode="WordWrap" TextColor="{StaticResource PrimaryTextColor}" />
                                     </Border>
                                 </DataTemplate>
                             </BindableLayout.ItemTemplate>

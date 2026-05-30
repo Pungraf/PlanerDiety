@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="DietPlanner.Mobile.Views.Controls.MainBottomNav"
+    x:Name="Self"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:navigation="clr-namespace:DietPlanner.Mobile.Navigation">
+    <ContentView.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Resources/Styles/MobileTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </ContentView.Resources>
+    <Border
+        Margin="20,8,20,20"
+        BackgroundColor="{StaticResource SurfaceColor}"
+        Padding="8"
+        Stroke="{StaticResource SurfaceMutedColor}"
+        StrokeThickness="1">
+        <Border.StrokeShape>
+            <RoundRectangle CornerRadius="24" />
+        </Border.StrokeShape>
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+            <Border Grid.Column="0" Padding="4" StrokeThickness="0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="20" />
+                </Border.StrokeShape>
+                <Border.Triggers>
+                    <DataTrigger
+                        Binding="{Binding Source={x:Reference Self}, Path=ActiveTab}"
+                        TargetType="Border"
+                        Value="{x:Static navigation:MainAppTab.Home}">
+                        <Setter Property="BackgroundColor" Value="{StaticResource AccentSoftColor}" />
+                    </DataTrigger>
+                </Border.Triggers>
+                <Button
+                    BackgroundColor="Transparent"
+                    Command="{Binding Source={x:Reference Self}, Path=GoToHomeCommand}"
+                    CornerRadius="18"
+                    FontAttributes="Bold"
+                    Padding="12,10"
+                    Text="Today">
+                    <Button.Triggers>
+                        <DataTrigger
+                            Binding="{Binding Source={x:Reference Self}, Path=ActiveTab}"
+                            TargetType="Button"
+                            Value="{x:Static navigation:MainAppTab.Home}">
+                            <Setter Property="TextColor" Value="{StaticResource AccentColor}" />
+                        </DataTrigger>
+                        <DataTrigger
+                            Binding="{Binding Source={x:Reference Self}, Path=ActiveTab}"
+                            TargetType="Button"
+                            Value="{x:Static navigation:MainAppTab.ShoppingList}">
+                            <Setter Property="TextColor" Value="{StaticResource SecondaryTextColor}" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+            </Border>
+
+            <Border Grid.Column="1" Padding="4" StrokeThickness="0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="20" />
+                </Border.StrokeShape>
+                <Border.Triggers>
+                    <DataTrigger
+                        Binding="{Binding Source={x:Reference Self}, Path=ActiveTab}"
+                        TargetType="Border"
+                        Value="{x:Static navigation:MainAppTab.ShoppingList}">
+                        <Setter Property="BackgroundColor" Value="{StaticResource HighlightSoftColor}" />
+                    </DataTrigger>
+                </Border.Triggers>
+                <Button
+                    BackgroundColor="Transparent"
+                    Command="{Binding Source={x:Reference Self}, Path=GoToShoppingListsCommand}"
+                    CornerRadius="18"
+                    FontAttributes="Bold"
+                    Padding="12,10"
+                    Text="Lists">
+                    <Button.Triggers>
+                        <DataTrigger
+                            Binding="{Binding Source={x:Reference Self}, Path=ActiveTab}"
+                            TargetType="Button"
+                            Value="{x:Static navigation:MainAppTab.ShoppingList}">
+                            <Setter Property="TextColor" Value="{StaticResource HighlightColor}" />
+                        </DataTrigger>
+                        <DataTrigger
+                            Binding="{Binding Source={x:Reference Self}, Path=ActiveTab}"
+                            TargetType="Button"
+                            Value="{x:Static navigation:MainAppTab.Home}">
+                            <Setter Property="TextColor" Value="{StaticResource SecondaryTextColor}" />
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+            </Border>
+        </Grid>
+    </Border>
+</ContentView>

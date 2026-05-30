@@ -6,4 +6,14 @@ public sealed class ShellNavigator : IAppNavigator
     {
         return Shell.Current.GoToAsync(route);
     }
+
+    public Task GoToMainTabAsync(MainAppTab tab)
+    {
+        return tab switch
+        {
+            MainAppTab.Home => Shell.Current.GoToAsync("//home"),
+            MainAppTab.ShoppingList => Shell.Current.GoToAsync("//main/shopping-list"),
+            _ => throw new ArgumentOutOfRangeException(nameof(tab), tab, null)
+        };
+    }
 }

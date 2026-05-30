@@ -3,6 +3,11 @@
     x:Class="DietPlanner.Mobile.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    BackgroundColor="#F2EAFF"
+    Shell.TabBarBackgroundColor="#FFFFFF"
+    Shell.TabBarForegroundColor="#7D3CF5"
+    Shell.TabBarTitleColor="#7D3CF5"
+    Shell.TabBarUnselectedColor="#8B7F9E"
     FlyoutBehavior="Disabled">
     <ShellContent
         x:Name="LoginShellContent"
@@ -13,10 +18,10 @@
         <ShellContent
             x:Name="HomeShellContent"
             Route="home"
-            Title="Home" />
+            Title="Today" />
         <ShellContent
             x:Name="ShoppingListShellContent"
             Route="shopping-list"
-            Title="Shopping list" />
+            Title="Lists" />
     </TabBar>
 </Shell>

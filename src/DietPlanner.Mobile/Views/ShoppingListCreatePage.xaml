@@ -5,51 +5,65 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:viewModels="clr-namespace:DietPlanner.Mobile.ViewModels"
     x:DataType="viewModels:ShoppingListCreateViewModel"
+    Shell.NavBarIsVisible="False"
     Title="Create shopping list">
-    <Grid RowDefinitions="Auto,*">
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Resources/Styles/MobileTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+    <Grid RowDefinitions="Auto,*" BackgroundColor="{StaticResource PageBackgroundColor}">
         <VerticalStackLayout
             Padding="24"
             Spacing="16"
             IsVisible="{Binding IsPresetStep}">
-            <Label FontAttributes="Bold" FontSize="28" Text="Choose a preset" />
-            <Label Text="Start with the full week or fine-tune the ingredients first." />
+            <Label Style="{StaticResource PageTitleStyle}" Text="Choose a preset" />
+            <Label Style="{StaticResource HeadlineBodyStyle}" Text="Start with the full week or fine-tune the ingredients first." />
             <Button
                 Command="{Binding SelectPresetCommand}"
+                Style="{StaticResource PrimaryButtonStyle}"
                 CommandParameter="{x:Static viewModels:ShoppingListCreatePreset.FullWeek}"
                 Text="Full week" />
             <Button
                 Command="{Binding SelectPresetCommand}"
+                Style="{StaticResource SecondaryButtonStyle}"
                 CommandParameter="{x:Static viewModels:ShoppingListCreatePreset.SelectedDays}"
                 Text="Selected days" />
             <Button
                 Command="{Binding SelectPresetCommand}"
+                Style="{StaticResource SecondaryButtonStyle}"
                 CommandParameter="{x:Static viewModels:ShoppingListCreatePreset.Custom}"
                 Text="Custom" />
-            <Label TextColor="IndianRed" Text="{Binding ErrorMessage}" />
+            <Label TextColor="{StaticResource DangerColor}" Text="{Binding ErrorMessage}" />
         </VerticalStackLayout>
 
         <Grid
             Grid.Row="1"
             RowDefinitions="*,Auto"
             IsVisible="{Binding IsDaySelectionStep}">
-            <CollectionView ItemsSource="{Binding Days}" SelectionMode="None">
+            <CollectionView BackgroundColor="{StaticResource PageBackgroundColor}" ItemsSource="{Binding Days}" SelectionMode="None">
                 <CollectionView.Header>
                     <VerticalStackLayout Padding="24" Spacing="12">
-                        <Label FontAttributes="Bold" FontSize="28" Text="Choose days" />
-                        <Label Text="Pick the days you want to include before fine-tuning ingredients." />
-                        <Label TextColor="IndianRed" Text="{Binding ErrorMessage}" />
+                        <Label Style="{StaticResource PageTitleStyle}" Text="Choose days" />
+                        <Label Style="{StaticResource HeadlineBodyStyle}" Text="Pick the days you want to include before fine-tuning ingredients." />
+                        <Label TextColor="{StaticResource DangerColor}" Text="{Binding ErrorMessage}" />
                     </VerticalStackLayout>
                 </CollectionView.Header>
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="viewModels:ShoppingListCreateDayViewModel">
-                        <Grid Padding="24,12" ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                            <CheckBox IsChecked="{Binding IsSelected}" VerticalOptions="Center" />
-                            <Label
-                                Grid.Column="1"
-                                FontAttributes="Bold"
-                                Text="{Binding Date}"
-                                VerticalOptions="Center" />
-                        </Grid>
+                        <Border Style="{StaticResource CardBorderStyle}" Margin="20,0,20,12" Padding="16">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                                <CheckBox IsChecked="{Binding IsSelected}" VerticalOptions="Center" />
+                                <Label
+                                    Grid.Column="1"
+                                    FontAttributes="Bold"
+                                    Text="{Binding Date}"
+                                    TextColor="{StaticResource PrimaryTextColor}"
+                                    VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
@@ -59,6 +73,7 @@
                 Margin="24"
                 Command="{Binding ContinueCommand}"
                 HorizontalOptions="Fill"
+                Style="{StaticResource PrimaryButtonStyle}"
                 Text="Continue" />
         </Grid>
 
@@ -66,26 +81,28 @@
             Grid.Row="1"
             RowDefinitions="*,Auto"
             IsVisible="{Binding IsBuilderStep}">
-            <CollectionView ItemsSource="{Binding Days}" SelectionMode="None">
+            <CollectionView BackgroundColor="{StaticResource PageBackgroundColor}" ItemsSource="{Binding Days}" SelectionMode="None">
                 <CollectionView.Header>
                     <VerticalStackLayout Padding="24" Spacing="12">
-                        <Label FontAttributes="Bold" FontSize="28" Text="Review ingredients" />
-                        <Label Text="Adjust the selection before saving the list." />
-                        <Label TextColor="IndianRed" Text="{Binding ErrorMessage}" />
+                        <Label Style="{StaticResource PageTitleStyle}" Text="Review ingredients" />
+                        <Label Style="{StaticResource HeadlineBodyStyle}" Text="Adjust the selection before saving the list." />
+                        <Label TextColor="{StaticResource DangerColor}" Text="{Binding ErrorMessage}" />
                     </VerticalStackLayout>
                 </CollectionView.Header>
                 <CollectionView.ItemTemplate>
                     <DataTemplate x:DataType="viewModels:ShoppingListCreateDayViewModel">
                         <VerticalStackLayout Padding="20" Spacing="12">
-                            <Label FontAttributes="Bold" Text="{Binding Date}" />
+                            <Label FontAttributes="Bold" Text="{Binding Date}" TextColor="{StaticResource PrimaryTextColor}" />
                             <VerticalStackLayout BindableLayout.ItemsSource="{Binding Meals}" Spacing="12">
                                 <BindableLayout.ItemTemplate>
                                     <DataTemplate x:DataType="viewModels:ShoppingListCreateMealViewModel">
-                                        <VerticalStackLayout Spacing="8">
+                                        <Border Style="{StaticResource CardBorderStyle}" Padding="14">
+                                            <VerticalStackLayout Spacing="10">
                                             <Grid ColumnDefinitions="*,Auto">
-                                                <Label FontAttributes="Bold" Text="{Binding MealName}" />
+                                                <Label FontAttributes="Bold" Text="{Binding MealName}" TextColor="{StaticResource PrimaryTextColor}" />
                                                 <Button
                                                     Grid.Column="1"
+                                                    Style="{StaticResource SecondaryButtonStyle}"
                                                     Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleMealCommand}"
                                                     CommandParameter="{Binding .}"
                                                     Text="Toggle" />
@@ -94,14 +111,15 @@
                                                 <BindableLayout.ItemTemplate>
                                                     <DataTemplate x:DataType="viewModels:ShoppingListCreateIngredientViewModel">
                                                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
-                                                            <CheckBox IsChecked="{Binding IsSelected}" />
-                                                            <Label Grid.Column="1" Text="{Binding Name}" />
-                                                            <Label Grid.Column="2" Text="{Binding Quantity}" />
+                                                            <CheckBox IsChecked="{Binding IsSelected}" VerticalOptions="Center" />
+                                                            <Label Grid.Column="1" Text="{Binding Name}" TextColor="{StaticResource PrimaryTextColor}" VerticalOptions="Center" />
+                                                            <Label Grid.Column="2" Text="{Binding Quantity}" TextColor="{StaticResource SecondaryTextColor}" VerticalOptions="Center" />
                                                         </Grid>
                                                     </DataTemplate>
                                                 </BindableLayout.ItemTemplate>
                                             </VerticalStackLayout>
                                         </VerticalStackLayout>
+                                        </Border>
                                     </DataTemplate>
                                 </BindableLayout.ItemTemplate>
                             </VerticalStackLayout>
@@ -115,6 +133,7 @@
                 Margin="24"
                 Command="{Binding SaveCommand}"
                 HorizontalOptions="Fill"
+                Style="{StaticResource PrimaryButtonStyle}"
                 Text="Save list" />
         </Grid>
     </Grid>

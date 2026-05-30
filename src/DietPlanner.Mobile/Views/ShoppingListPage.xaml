@@ -2,41 +2,66 @@
 <ContentPage
     x:Class="DietPlanner.Mobile.Views.ShoppingListPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:controls="clr-namespace:DietPlanner.Mobile.Views.Controls"
+    xmlns:navigation="clr-namespace:DietPlanner.Mobile.Navigation"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:viewModels="clr-namespace:DietPlanner.Mobile.ViewModels"
     x:DataType="viewModels:ShoppingListViewModel"
+    Shell.NavBarIsVisible="False"
+    Shell.TabBarIsVisible="False"
     Title="Shopping list">
-    <Grid>
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Resources/Styles/MobileTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+    <Grid RowDefinitions="*,Auto" BackgroundColor="{StaticResource PageBackgroundColor}">
+        <Grid BackgroundColor="{StaticResource PageBackgroundColor}">
         <CollectionView
+            BackgroundColor="{StaticResource PageBackgroundColor}"
             ItemsSource="{Binding Lists}"
             IsVisible="{Binding ShowListPicker}"
             SelectionMode="None">
             <CollectionView.Header>
-                <VerticalStackLayout Padding="24" Spacing="16">
-                    <Label FontAttributes="Bold" FontSize="28" Text="Shopping lists" />
-                    <Label Text="Open a saved list or create a new one." />
-                    <Button Command="{Binding OpenCreateCommand}" Text="Create list" />
-                    <Label TextColor="IndianRed" Text="{Binding ErrorMessage}" />
+                <VerticalStackLayout Padding="20" Spacing="16">
+                    <Border Style="{StaticResource HeroCardBorderStyle}">
+                        <VerticalStackLayout Spacing="6">
+                            <Label Style="{StaticResource HeroTitleStyle}" Text="Shopping lists" />
+                            <Label Style="{StaticResource HeroBodyStyle}" Text="Create focused lists for the current week and check items off while shopping." />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Button Command="{Binding OpenCreateCommand}" Style="{StaticResource PrimaryButtonStyle}" Text="Create list" />
+                    <Label TextColor="{StaticResource DangerColor}" Text="{Binding ErrorMessage}" />
                 </VerticalStackLayout>
             </CollectionView.Header>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="viewModels:ShoppingListSummaryViewModel">
-                    <Border Margin="24,0,24,12" Padding="16" StrokeThickness="0">
+                    <Border Style="{StaticResource CardBorderStyle}" Margin="20,0,20,12" Padding="16">
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                            <VerticalStackLayout Spacing="4">
-                                <Label FontAttributes="Bold" Text="{Binding Name}" />
-                                <Label Text="{Binding CreatedAt}" />
-                                <Label Text="{Binding ItemCount, StringFormat='Items: {0}'}" />
+                            <VerticalStackLayout Spacing="8">
+                                <Label FontAttributes="Bold" FontSize="17" Text="{Binding Name}" TextColor="{StaticResource PrimaryTextColor}" />
+                                <Label Style="{StaticResource HeadlineBodyStyle}" Text="{Binding CreatedAt}" />
+                                <Border
+                                    BackgroundColor="{StaticResource AccentSoftColor}"
+                                    HorizontalOptions="Start"
+                                    Padding="10,4"
+                                    StrokeThickness="0">
+                                    <Label Text="{Binding ItemCount, StringFormat='{0} items'}" TextColor="{StaticResource AccentColor}" />
+                                </Border>
                             </VerticalStackLayout>
                             <VerticalStackLayout
                                 Grid.Column="1"
                                 VerticalOptions="Center"
                                 Spacing="8">
                                 <Button
+                                    Style="{StaticResource SecondaryButtonStyle}"
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.SelectListCommand}"
                                     CommandParameter="{Binding .}"
                                     Text="Open" />
                                 <Button
+                                    Style="{StaticResource SecondaryButtonStyle}"
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteListCommand}"
                                     CommandParameter="{Binding .}"
                                     Text="Delete" />
@@ -50,32 +75,40 @@
                     Margin="24,0,24,24"
                     HorizontalTextAlignment="Center"
                     IsVisible="{Binding ShowEmptyState}"
+                    Style="{StaticResource HeadlineBodyStyle}"
                     Text="No items to shop for yet." />
             </CollectionView.Footer>
         </CollectionView>
 
         <CollectionView
+            BackgroundColor="{StaticResource PageBackgroundColor}"
             ItemsSource="{Binding Items}"
             IsVisible="{Binding ShowListDetails}"
             SelectionMode="None">
             <CollectionView.Header>
-                <VerticalStackLayout Padding="24" Spacing="16">
+                <VerticalStackLayout Padding="20" Spacing="16">
                     <Button
                         Command="{Binding BackToListsCommand}"
                         HorizontalOptions="Start"
+                        Style="{StaticResource SecondaryButtonStyle}"
                         Text="Return to lists" />
-                    <Label FontAttributes="Bold" FontSize="28" Text="{Binding SelectedList.Name}" />
-                    <Label Text="Check items off as you shop." />
-                    <Button
-                        Command="{Binding DeleteSelectedListCommand}"
-                        HorizontalOptions="Start"
-                        Text="Delete list" />
-                    <Label TextColor="IndianRed" Text="{Binding ErrorMessage}" />
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="16">
+                        <VerticalStackLayout Spacing="10">
+                            <Label Style="{StaticResource PageTitleStyle}" Text="{Binding SelectedList.Name}" />
+                            <Label Style="{StaticResource HeadlineBodyStyle}" Text="Check items off as you shop." />
+                            <Button
+                                Command="{Binding DeleteSelectedListCommand}"
+                                HorizontalOptions="Start"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Text="Delete list" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Label TextColor="{StaticResource DangerColor}" Text="{Binding ErrorMessage}" />
                 </VerticalStackLayout>
             </CollectionView.Header>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="viewModels:ShoppingListSummaryItemViewModel">
-                    <VerticalStackLayout Margin="24,0,24,12" Spacing="8">
+                    <VerticalStackLayout Margin="20,0,20,12" Spacing="8">
                         <Grid
                             ColumnDefinitions="Auto,*"
                             ColumnSpacing="12"
@@ -83,28 +116,39 @@
                             <Label
                                 FontAttributes="Bold"
                                 FontSize="16"
+                                TextColor="{StaticResource AccentColor}"
                                 Text="Bought" />
                             <BoxView
                                 Grid.Column="1"
                                 HeightRequest="1"
+                                Color="{StaticResource AccentColor}"
                                 HorizontalOptions="Fill"
                                 VerticalOptions="Center" />
                         </Grid>
 
-                        <Border Padding="16" StrokeThickness="0">
+                        <Border
+                            Style="{StaticResource CardBorderStyle}"
+                            Padding="16">
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding IsChecked}" Value="True">
+                                    <Setter Property="BackgroundColor" Value="{StaticResource BoughtSurfaceColor}" />
+                                </DataTrigger>
+                            </Border.Triggers>
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                                 <VerticalStackLayout Spacing="2">
-                                    <Label FontAttributes="Bold" Text="{Binding Name}">
+                                    <Label FontAttributes="Bold" Text="{Binding Name}" TextColor="{StaticResource PrimaryTextColor}">
                                         <Label.Triggers>
                                             <DataTrigger TargetType="Label" Binding="{Binding IsChecked}" Value="True">
                                                 <Setter Property="TextDecorations" Value="Strikethrough" />
+                                                <Setter Property="TextColor" Value="{StaticResource SecondaryTextColor}" />
                                             </DataTrigger>
                                         </Label.Triggers>
                                     </Label>
-                                    <Label Text="{Binding QuantityText}">
+                                    <Label Text="{Binding QuantityText}" TextColor="{StaticResource SecondaryTextColor}">
                                         <Label.Triggers>
                                             <DataTrigger TargetType="Label" Binding="{Binding IsChecked}" Value="True">
                                                 <Setter Property="TextDecorations" Value="Strikethrough" />
+                                                <Setter Property="TextColor" Value="{StaticResource SecondaryTextColor}" />
                                             </DataTrigger>
                                         </Label.Triggers>
                                     </Label>
@@ -112,6 +156,7 @@
                                 <Button
                                     Grid.Column="1"
                                     VerticalOptions="Center"
+                                    Style="{StaticResource SecondaryButtonStyle}"
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleItemCommand}"
                                     CommandParameter="{Binding .}"
                                     Text="{Binding ActionLabel}" />
@@ -125,6 +170,7 @@
                     Margin="24,0,24,24"
                     HorizontalTextAlignment="Center"
                     IsVisible="{Binding ShowEmptyState}"
+                    Style="{StaticResource HeadlineBodyStyle}"
                     Text="No items to shop for yet." />
             </CollectionView.Footer>
         </CollectionView>
@@ -135,7 +181,13 @@
             VerticalOptions="Center"
             Spacing="8">
             <ActivityIndicator IsRunning="{Binding IsLoading}" />
-            <Label HorizontalTextAlignment="Center" Text="Loading shopping list..." />
+            <Label HorizontalTextAlignment="Center" Style="{StaticResource HeadlineBodyStyle}" Text="Loading shopping list..." />
         </VerticalStackLayout>
+        </Grid>
+        <controls:MainBottomNav
+            Grid.Row="1"
+            ActiveTab="{x:Static navigation:MainAppTab.ShoppingList}"
+            GoToHomeCommand="{Binding GoToHomeCommand}"
+            GoToShoppingListsCommand="{Binding GoToShoppingListsCommand}" />
     </Grid>
 </ContentPage>
