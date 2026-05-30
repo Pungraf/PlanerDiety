@@ -15,6 +15,7 @@ internal static class TestMeals
             new Meal(Guid.NewGuid(), "Cheesecake Jar", MealType.Breakfast, true, 410, 12),
             new Meal(Guid.NewGuid(), "Chicken Rice", MealType.Lunch, false, 620, 42),
             new Meal(Guid.NewGuid(), "Pasta", MealType.Lunch, false, 700, 28),
+            new Meal(Guid.NewGuid(), "Beef Bowl", MealType.Lunch, false, 640, 36),
             new Meal(Guid.NewGuid(), "Salmon Salad", MealType.Dinner, false, 530, 35),
             new Meal(Guid.NewGuid(), "Turkey Wrap", MealType.Dinner, false, 480, 31)
         ];

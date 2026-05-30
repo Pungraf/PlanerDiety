@@ -5,6 +5,18 @@ namespace DietPlanner.Application.Planning;
 
 public sealed class WeeklyPlanGenerator : IWeeklyPlanGenerator
 {
+    private readonly Random _random;
+
+    public WeeklyPlanGenerator()
+        : this(Random.Shared)
+    {
+    }
+
+    internal WeeklyPlanGenerator(Random random)
+    {
+        _random = random ?? throw new ArgumentNullException(nameof(random));
+    }
+
     public WeeklyPlan Generate(WeeklyPlanGenerationRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -53,30 +65,69 @@ public sealed class WeeklyPlanGenerator : IWeeklyPlanGenerator
             });
 
         var plan = WeeklyPlan.CreateDraft(request.UserId, request.StartDate, request.DinnerMode);
+        var breakfastState = new PoolState();
+        var lunchState = new PoolState();
+        var dinnerState = ReferenceEquals(dinnerMeals, lunchMeals)
+            ? lunchState
+            : ReferenceEquals(dinnerMeals, breakfastMeals)
+                ? breakfastState
+                : new PoolState();
+        HashSet<Guid> previousBreakfastFamilyMealIds = [];
+        HashSet<Guid> previousLunchFamilyMealIds = [];
+        HashSet<Guid> previousDinnerFamilyMealIds = [];
 
         for (var dayOffset = 0; dayOffset < 7; dayOffset++)
         {
             var day = new DailyPlan(Guid.NewGuid(), request.StartDate.AddDays(dayOffset));
-            var breakfastStartIndex = dayOffset % breakfastMeals.Length;
-            var lunch = lunchMeals[(dayOffset / 2) % lunchMeals.Length];
+            HashSet<Guid> usedToday = [];
 
-            day.AddSlot(new DailyMealSlot(Guid.NewGuid(), MealSlotType.Breakfast, breakfastMeals[breakfastStartIndex].Id));
+            var breakfast = DrawMeal(
+                breakfastMeals,
+                breakfastState,
+                usedToday,
+                previousBreakfastFamilyMealIds);
+            usedToday.Add(breakfast.Id);
+
+            var secondBreakfast = DrawMeal(
+                breakfastMeals,
+                breakfastState,
+                usedToday,
+                previousBreakfastFamilyMealIds);
+            usedToday.Add(secondBreakfast.Id);
+
+            var lunch = DrawMeal(
+                lunchMeals,
+                lunchState,
+                usedToday,
+                previousLunchFamilyMealIds);
+            usedToday.Add(lunch.Id);
+
+            day.AddSlot(new DailyMealSlot(Guid.NewGuid(), MealSlotType.Breakfast, breakfast.Id));
             day.AddSlot(new DailyMealSlot(
                 Guid.NewGuid(),
                 MealSlotType.SecondBreakfast,
-                breakfastMeals[(breakfastStartIndex + 1) % breakfastMeals.Length].Id));
+                secondBreakfast.Id));
             day.AddSlot(new DailyMealSlot(Guid.NewGuid(), MealSlotType.Lunch, lunch.Id));
 
-            var dinner = request.DinnerMode switch
-            {
-                DinnerMode.BreakfastStyle => breakfastMeals[(breakfastStartIndex + 2) % breakfastMeals.Length],
-                DinnerMode.LunchStyle => dinnerMeals[((dayOffset / 2) + 1) % dinnerMeals.Length],
-                _ => dinnerMeals[dayOffset % dinnerMeals.Length]
-            };
+            var dinner = DrawMeal(
+                dinnerMeals,
+                dinnerState,
+                usedToday,
+                previousDinnerFamilyMealIds);
+            usedToday.Add(dinner.Id);
 
             day.AddSlot(new DailyMealSlot(Guid.NewGuid(), MealSlotType.Dinner, dinner.Id));
 
             plan.AddDay(day);
+
+            previousBreakfastFamilyMealIds =
+            [
+                breakfast.Id,
+                secondBreakfast.Id
+            ];
+
+            previousLunchFamilyMealIds = [lunch.Id];
+            previousDinnerFamilyMealIds = [dinner.Id];
         }
 
         return plan;
@@ -88,5 +139,37 @@ public sealed class WeeklyPlanGenerator : IWeeklyPlanGenerator
         {
             throw new InvalidOperationException(message);
         }
+    }
+
+    private Meal DrawMeal(
+        IReadOnlyList<Meal> pool,
+        PoolState state,
+        IReadOnlySet<Guid> usedToday,
+        IReadOnlySet<Guid> previousDayMealIds)
+    {
+        if (state.UsedInCycle.Count >= pool.Count)
+        {
+            state.UsedInCycle.Clear();
+        }
+
+        var candidateGroups = new[]
+        {
+            pool.Where(meal => !state.UsedInCycle.Contains(meal.Id) && !usedToday.Contains(meal.Id) && !previousDayMealIds.Contains(meal.Id)).ToArray(),
+            pool.Where(meal => !state.UsedInCycle.Contains(meal.Id) && !usedToday.Contains(meal.Id)).ToArray(),
+            pool.Where(meal => !usedToday.Contains(meal.Id) && !previousDayMealIds.Contains(meal.Id)).ToArray(),
+            pool.Where(meal => !usedToday.Contains(meal.Id)).ToArray(),
+            pool.Where(meal => !previousDayMealIds.Contains(meal.Id)).ToArray(),
+            pool.ToArray()
+        };
+
+        var candidates = candidateGroups.First(group => group.Length > 0);
+        var selected = candidates[_random.Next(candidates.Length)];
+        state.UsedInCycle.Add(selected.Id);
+        return selected;
+    }
+
+    private sealed class PoolState
+    {
+        public HashSet<Guid> UsedInCycle { get; } = [];
     }
 }

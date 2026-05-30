@@ -7,7 +7,7 @@ namespace DietPlanner.Domain.Tests;
 public class WeeklyPlanGeneratorRulesTests
 {
     [Fact]
-    public void Generate_ShouldRepeatLunchForTwoConsecutiveDays()
+    public void Generate_ShouldAvoidConsecutiveLunchRepeats_WhenAlternativeExists()
     {
         var generator = new WeeklyPlanGenerator();
         var meals = TestMeals.ValidPool();
@@ -23,9 +23,9 @@ public class WeeklyPlanGeneratorRulesTests
         var day3Lunch = GetMealId(plan.Days.ElementAt(2), MealSlotType.Lunch);
         var day4Lunch = GetMealId(plan.Days.ElementAt(3), MealSlotType.Lunch);
 
-        day2Lunch.Should().Be(day1Lunch);
-        day4Lunch.Should().Be(day3Lunch);
-        day3Lunch.Should().NotBe(day1Lunch);
+        day2Lunch.Should().NotBe(day1Lunch);
+        day3Lunch.Should().NotBe(day2Lunch);
+        day4Lunch.Should().NotBe(day3Lunch);
     }
 
     [Fact]
@@ -163,7 +163,30 @@ public class WeeklyPlanGeneratorRulesTests
     }
 
     [Fact]
-    public void Generate_WithLunchStyleDinnerMode_ShouldRepeatDinnerForTwoConsecutiveDays()
+    public void Generate_ShouldAvoidBreakfastDuplicatesWithinDay_WhenPoolIsLargeEnough()
+    {
+        var generator = new WeeklyPlanGenerator();
+        var meals = TestMeals.ValidPool();
+
+        var plan = generator.Generate(new WeeklyPlanGenerationRequest(
+            Guid.NewGuid(),
+            new DateOnly(2026, 5, 25),
+            DinnerMode.Standard,
+            meals));
+
+        foreach (var day in plan.Days)
+        {
+            var breakfastIds = day.MealSlots
+                .Where(slot => slot.SlotType == MealSlotType.Breakfast || slot.SlotType == MealSlotType.SecondBreakfast)
+                .Select(slot => slot.MealId)
+                .ToArray();
+
+            breakfastIds.Distinct().Count().Should().Be(breakfastIds.Length);
+        }
+    }
+
+    [Fact]
+    public void Generate_WithLunchStyleDinnerMode_ShouldAvoidConsecutiveDinnerRepeats_WhenAlternativeExists()
     {
         var generator = new WeeklyPlanGenerator();
         var meals = TestMeals.ValidPool();
@@ -179,9 +202,9 @@ public class WeeklyPlanGeneratorRulesTests
         var day3Dinner = GetMealId(plan.Days.ElementAt(2), MealSlotType.Dinner);
         var day4Dinner = GetMealId(plan.Days.ElementAt(3), MealSlotType.Dinner);
 
-        day2Dinner.Should().Be(day1Dinner);
-        day4Dinner.Should().Be(day3Dinner);
-        day3Dinner.Should().NotBe(day1Dinner);
+        day2Dinner.Should().NotBe(day1Dinner);
+        day3Dinner.Should().NotBe(day2Dinner);
+        day4Dinner.Should().NotBe(day3Dinner);
     }
 
     [Fact]
@@ -218,6 +241,31 @@ public class WeeklyPlanGeneratorRulesTests
     }
 
     [Fact]
+    public void Generate_ShouldUseMoreThanOneEligibleLunchBeforeReusing_WhenPoolHasAlternatives()
+    {
+        var generator = new WeeklyPlanGenerator();
+        var meals = TestMeals.ValidPool();
+        var allowedLunchIds = meals
+            .Where(meal => meal.Type == MealType.Lunch)
+            .Select(meal => meal.Id)
+            .ToHashSet();
+
+        var plan = generator.Generate(new WeeklyPlanGenerationRequest(
+            Guid.NewGuid(),
+            new DateOnly(2026, 5, 25),
+            DinnerMode.Standard,
+            meals));
+
+        var firstThreeLunches = plan.Days
+            .Take(3)
+            .Select(day => GetMealId(day, MealSlotType.Lunch))
+            .ToArray();
+
+        firstThreeLunches.Distinct().Count().Should().BeGreaterThan(1);
+        firstThreeLunches.Should().OnlyContain(id => allowedLunchIds.Contains(id));
+    }
+
+    [Fact]
     public void Generate_WithoutDinnerMealsInStandardMode_ShouldThrowInvalidOperationException()
     {
         var generator = new WeeklyPlanGenerator();
@@ -229,6 +277,48 @@ public class WeeklyPlanGeneratorRulesTests
             TestMeals.StandardPoolWithoutDinner()));
 
         act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Generate_WithLunchStyleDinnerMode_ShouldAvoidLunchAndDinnerDuplicateWithinDay_WhenPoolIsLargeEnough()
+    {
+        var generator = new WeeklyPlanGenerator();
+        var meals = TestMeals.ValidPool();
+
+        var plan = generator.Generate(new WeeklyPlanGenerationRequest(
+            Guid.NewGuid(),
+            new DateOnly(2026, 5, 25),
+            DinnerMode.LunchStyle,
+            meals));
+
+        plan.Days.Should().OnlyContain(day =>
+            GetMealId(day, MealSlotType.Lunch) != GetMealId(day, MealSlotType.Dinner));
+    }
+
+    [Fact]
+    public void Generate_WithBreakfastStyleDinnerMode_ShouldAvoidBreakfastFamilyDuplicatesWithinDay_WhenPoolIsLargeEnough()
+    {
+        var generator = new WeeklyPlanGenerator();
+        var meals = TestMeals.ValidPool();
+
+        var plan = generator.Generate(new WeeklyPlanGenerationRequest(
+            Guid.NewGuid(),
+            new DateOnly(2026, 5, 25),
+            DinnerMode.BreakfastStyle,
+            meals));
+
+        foreach (var day in plan.Days)
+        {
+            var ids = day.MealSlots
+                .Where(slot =>
+                    slot.SlotType == MealSlotType.Breakfast ||
+                    slot.SlotType == MealSlotType.SecondBreakfast ||
+                    slot.SlotType == MealSlotType.Dinner)
+                .Select(slot => slot.MealId)
+                .ToArray();
+
+            ids.Distinct().Count().Should().Be(ids.Length);
+        }
     }
 
     private static Guid GetMealId(DietPlanner.Domain.Entities.DailyPlan day, MealSlotType slotType)
