@@ -4,6 +4,7 @@ using DietPlanner.Application.Auth;
 using DietPlanner.Application.Meals.Queries;
 using DietPlanner.Application.Planning;
 using DietPlanner.Application.Plans.Commands;
+using DietPlanner.Application.Plans.Planning;
 using DietPlanner.Application.Plans.Queries;
 using DietPlanner.Application.Shopping;
 using DietPlanner.Application.Shopping.Commands;
@@ -41,6 +42,7 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<GoogleLoginHandler>();
         services.AddScoped<GetCurrentPlanHandler>();
+        services.AddScoped<PlanningStateService>();
         services.AddScoped<ActivateDraftHandler>();
         services.AddScoped<DeleteShoppingListsForPlanHandler>();
         services.AddScoped<ReplaceMealHandler>();

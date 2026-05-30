@@ -73,6 +73,70 @@ public class DietPlannerDbContext : DbContext, IApplicationDbContext
             .FirstOrDefault();
     }
 
+    public async Task<WeeklyPlan?> FindCurrentWeeklyPlanAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("Value cannot be empty.", nameof(userId));
+        }
+
+        var plans = await WeeklyPlans
+            .Include(plan => plan.Days)
+            .ThenInclude(day => day.MealSlots)
+            .Where(plan => plan.UserId == userId
+                && (plan.Status == WeeklyPlanStatus.Current || plan.Status == WeeklyPlanStatus.Active))
+            .OrderByDescending(plan => plan.StartDate)
+            .ToListAsync(cancellationToken);
+
+        return plans
+            .OrderByDescending(plan => plan.Status == WeeklyPlanStatus.Current)
+            .FirstOrDefault();
+    }
+
+    public async Task<WeeklyPlan?> FindFutureWeeklyPlanAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("Value cannot be empty.", nameof(userId));
+        }
+
+        var plans = await WeeklyPlans
+            .Include(plan => plan.Days)
+            .ThenInclude(day => day.MealSlots)
+            .Where(plan => plan.UserId == userId
+                && (plan.Status == WeeklyPlanStatus.Future || plan.Status == WeeklyPlanStatus.Draft))
+            .OrderByDescending(plan => plan.StartDate)
+            .ToListAsync(cancellationToken);
+
+        return plans
+            .OrderByDescending(plan => plan.Status == WeeklyPlanStatus.Future)
+            .FirstOrDefault();
+    }
+
+    public Task<WeeklyPlan?> FindWeeklyPlanByIdAsync(Guid userId, Guid planId, CancellationToken cancellationToken)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new ArgumentException("Value cannot be empty.", nameof(userId));
+        }
+
+        if (planId == Guid.Empty)
+        {
+            throw new ArgumentException("Value cannot be empty.", nameof(planId));
+        }
+
+        return WeeklyPlans
+            .Include(plan => plan.Days)
+            .ThenInclude(day => day.MealSlots)
+            .SingleOrDefaultAsync(plan => plan.UserId == userId && plan.Id == planId, cancellationToken);
+    }
+
+    public void RemoveWeeklyPlan(WeeklyPlan weeklyPlan)
+    {
+        ArgumentNullException.ThrowIfNull(weeklyPlan);
+        WeeklyPlans.Remove(weeklyPlan);
+    }
+
     public Task<WeeklyPlan?> FindLatestDraftWeeklyPlanAsync(Guid userId, CancellationToken cancellationToken)
     {
         if (userId == Guid.Empty)

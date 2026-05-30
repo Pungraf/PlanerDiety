@@ -77,6 +77,26 @@ public class WeeklyPlan
         Status = WeeklyPlanStatus.Current;
     }
 
+    public void MarkDraftAsCurrent()
+    {
+        if (Status != WeeklyPlanStatus.Draft)
+        {
+            throw new InvalidOperationException("Only draft plans can be marked as current.");
+        }
+
+        Status = WeeklyPlanStatus.Current;
+    }
+
+    public void MarkDraftAsFuture()
+    {
+        if (Status != WeeklyPlanStatus.Draft)
+        {
+            throw new InvalidOperationException("Only draft plans can be marked as future.");
+        }
+
+        Status = WeeklyPlanStatus.Future;
+    }
+
     public bool CopyDay(DateOnly sourceDate, DateOnly targetDate)
     {
         var sourceDay = _days.SingleOrDefault(day => day.Date == sourceDate);

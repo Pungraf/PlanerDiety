@@ -17,6 +17,14 @@ public interface IApplicationDbContext
 
     Task<WeeklyPlan?> FindLatestDraftWeeklyPlanAsync(Guid userId, CancellationToken cancellationToken);
 
+    Task<WeeklyPlan?> FindCurrentWeeklyPlanAsync(Guid userId, CancellationToken cancellationToken);
+
+    Task<WeeklyPlan?> FindFutureWeeklyPlanAsync(Guid userId, CancellationToken cancellationToken);
+
+    Task<WeeklyPlan?> FindWeeklyPlanByIdAsync(Guid userId, Guid planId, CancellationToken cancellationToken);
+
+    void RemoveWeeklyPlan(WeeklyPlan weeklyPlan);
+
     Task<Meal?> FindMealByIdAsync(Guid mealId, CancellationToken cancellationToken);
 
     Task<Meal?> FindMealDetailsByIdAsync(Guid mealId, CancellationToken cancellationToken);
