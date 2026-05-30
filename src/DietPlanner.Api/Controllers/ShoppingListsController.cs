@@ -141,7 +141,7 @@ public sealed class ShoppingListsController : ControllerBase
     }
 
     [HttpPost("{listId:guid}/items/{itemId:guid}/toggle")]
-    public async Task<ActionResult<ShoppingListResponse>> ToggleItem(Guid listId, Guid itemId, CancellationToken cancellationToken)
+    public async Task<ActionResult<ShoppingListDetailsResponse>> ToggleItem(Guid listId, Guid itemId, CancellationToken cancellationToken)
     {
         var userId = GetCurrentUserId();
         if (userId is null)
@@ -158,7 +158,7 @@ public sealed class ShoppingListsController : ControllerBase
             new ToggleShoppingListItemCommand(userId.Value, listId, itemId),
             cancellationToken);
 
-        return shoppingList is null ? NotFound() : Ok(ShoppingListResponse.From(shoppingList));
+        return shoppingList is null ? NotFound() : Ok(ShoppingListDetailsResponse.From(shoppingList));
     }
 
     private Guid? GetCurrentUserId()

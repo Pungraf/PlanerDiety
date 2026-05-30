@@ -270,14 +270,19 @@ public sealed class ShoppingListViewModel : INotifyPropertyChanged
 
     private void ApplyItems(ShoppingListDetailsDto shoppingList)
     {
-        var mappedItems = shoppingList.Items
+        var orderedItems = (shoppingList.Items ?? [])
+            .OrderBy(item => item.IsChecked)
+            .ThenBy(item => item.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToArray();
+
+        var mappedItems = orderedItems
             .Select((item, index) => new ShoppingListSummaryItemViewModel(
                 item.Id,
                 item.Name,
                 item.Quantity,
                 item.Unit,
                 item.IsChecked,
-                item.IsChecked && (index == 0 || !shoppingList.Items[index - 1].IsChecked)))
+                item.IsChecked && (index == 0 || !orderedItems[index - 1].IsChecked)))
             .ToArray();
 
         Items.Clear();

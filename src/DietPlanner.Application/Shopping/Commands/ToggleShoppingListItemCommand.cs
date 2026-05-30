@@ -14,7 +14,7 @@ public sealed class ToggleShoppingListItemHandler
         _dbContext = dbContext;
     }
 
-    public async Task<ShoppingListDto?> HandleAsync(ToggleShoppingListItemCommand command, CancellationToken cancellationToken)
+    public async Task<ShoppingListDetailsDto?> HandleAsync(ToggleShoppingListItemCommand command, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(command);
 
@@ -43,6 +43,6 @@ public sealed class ToggleShoppingListItemHandler
             shoppingList.Items.Select(candidate => candidate.IngredientId).Distinct().ToArray(),
             cancellationToken);
 
-        return ShoppingListDto.From(shoppingList, ingredients.ToDictionary(ingredient => ingredient.Id, ingredient => ingredient.Name));
+        return ShoppingListDetailsDto.From(shoppingList, ingredients.ToDictionary(ingredient => ingredient.Id, ingredient => ingredient.Name));
     }
 }

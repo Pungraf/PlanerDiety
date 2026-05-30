@@ -18,13 +18,13 @@ public class ToggleShoppingListItemTests
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var list = await response.Content.ReadFromJsonAsync<ShoppingListResponse>();
+        var list = await response.Content.ReadFromJsonAsync<ShoppingListDetailsResponse>();
         list.Should().NotBeNull();
-        list!.SummaryItems.Select(item => item.Id).Should().Equal(
+        list!.Items.Select(item => item.Id).Should().Equal(
             TestData.OatsShoppingListItemId,
             TestData.TomatoShoppingListItemId,
             TestData.ChickenShoppingListItemId);
-        list.SummaryItems.Last().IsChecked.Should().BeTrue();
+        list.Items.Last().IsChecked.Should().BeTrue();
     }
 
     [Fact]
@@ -66,6 +66,6 @@ public class ToggleShoppingListItemTests
     }
 }
 
-public sealed record ShoppingListResponse(Guid Id, IReadOnlyList<ShoppingListSummaryItemResponse> SummaryItems);
+public sealed record ShoppingListDetailsResponse(Guid Id, string Name, IReadOnlyList<ShoppingListSummaryItemResponse> Items);
 
 public sealed record ShoppingListSummaryItemResponse(Guid Id, string Name, decimal Quantity, string Unit, bool IsChecked);

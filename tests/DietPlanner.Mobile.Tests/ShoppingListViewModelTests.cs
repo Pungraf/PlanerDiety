@@ -141,23 +141,26 @@ public sealed class ShoppingListViewModelTests
     public async Task ToggleItem_ShouldPreserveSelectedDetailsState()
     {
         var listId = Guid.Parse("11111111-1111-1111-1111-111111111111");
-        var itemId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var milkId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var breadId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
         var api = new FakeShoppingListApiClient(
             lists:
             [
-                new ShoppingListSummaryDto(listId, "Week groceries", "2026-05-29", 1)
+                new ShoppingListSummaryDto(listId, "Week groceries", "2026-05-29", 2)
             ],
             details: new ShoppingListDetailsDto(
                 listId,
                 "Week groceries",
                 [
-                    new ShoppingListSummaryItemDto(itemId, "Milk", 2m, "l", false)
+                    new ShoppingListSummaryItemDto(milkId, "Milk", 2m, "l", false),
+                    new ShoppingListSummaryItemDto(breadId, "Bread", 1m, "pc", false)
                 ]),
             toggledDetails: new ShoppingListDetailsDto(
                 listId,
                 "Week groceries",
                 [
-                    new ShoppingListSummaryItemDto(itemId, "Milk", 2m, "l", true)
+                    new ShoppingListSummaryItemDto(milkId, "Milk", 2m, "l", true),
+                    new ShoppingListSummaryItemDto(breadId, "Bread", 1m, "pc", false)
                 ]));
         var viewModel = new ShoppingListViewModel(api, new RecordingNavigator(), new RecordingPromptService(confirmResult: false));
 
@@ -165,14 +168,16 @@ public sealed class ShoppingListViewModelTests
         var selectedList = viewModel.Lists.Single();
         await viewModel.SelectListAsync(selectedList);
 
-        await viewModel.ToggleItemAsync(viewModel.Items.Single());
+        await viewModel.ToggleItemAsync(viewModel.Items.Single(item => item.Id == milkId));
 
         Assert.Same(selectedList, viewModel.SelectedList);
         Assert.True(viewModel.ShowListDetails);
         Assert.False(viewModel.ShowListPicker);
-        var item = Assert.Single(viewModel.Items);
-        Assert.True(item.IsChecked);
-        Assert.Equal([itemId], api.ToggledItemIds);
+        Assert.Equal(["Bread", "Milk"], viewModel.Items.Select(item => item.Name));
+        Assert.False(viewModel.Items[0].IsChecked);
+        Assert.True(viewModel.Items[1].IsChecked);
+        Assert.True(viewModel.Items[1].ShowCheckedDivider);
+        Assert.Equal([milkId], api.ToggledItemIds);
     }
 
     [Fact]
@@ -193,9 +198,11 @@ public sealed class ShoppingListViewModelTests
         var xaml = File.ReadAllText(pageXamlPath);
 
         Assert.Contains("BackToListsCommand", xaml);
+        Assert.Contains("Return to lists", xaml);
         Assert.Contains("DeleteListCommand", xaml);
         Assert.Contains("DeleteSelectedListCommand", xaml);
         Assert.Contains("ToggleItemCommand", xaml);
+        Assert.Contains("TextDecorations\" Value=\"Strikethrough\"", xaml);
     }
 
     private sealed class FakeShoppingListApiClient : IShoppingListApiClient

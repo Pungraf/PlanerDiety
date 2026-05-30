@@ -63,7 +63,7 @@
                     <Button
                         Command="{Binding BackToListsCommand}"
                         HorizontalOptions="Start"
-                        Text="Back to lists" />
+                        Text="Return to lists" />
                     <Label FontAttributes="Bold" FontSize="28" Text="{Binding SelectedList.Name}" />
                     <Label Text="Check items off as you shop." />
                     <Button
@@ -94,8 +94,20 @@
                         <Border Padding="16" StrokeThickness="0">
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                                 <VerticalStackLayout Spacing="2">
-                                    <Label FontAttributes="Bold" Text="{Binding Name}" />
-                                    <Label Text="{Binding QuantityText}" />
+                                    <Label FontAttributes="Bold" Text="{Binding Name}">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label" Binding="{Binding IsChecked}" Value="True">
+                                                <Setter Property="TextDecorations" Value="Strikethrough" />
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
+                                    <Label Text="{Binding QuantityText}">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label" Binding="{Binding IsChecked}" Value="True">
+                                                <Setter Property="TextDecorations" Value="Strikethrough" />
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
                                 </VerticalStackLayout>
                                 <Button
                                     Grid.Column="1"

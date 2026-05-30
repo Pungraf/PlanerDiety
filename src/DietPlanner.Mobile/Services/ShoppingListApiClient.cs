@@ -104,7 +104,7 @@ public sealed class ShoppingListApiClient : IShoppingListApiClient
 
 public sealed record ShoppingListSummaryDto(Guid Id, string Name, string CreatedAt, int ItemCount);
 
-public sealed record ShoppingListDetailsDto(Guid Id, string Name, IReadOnlyList<ShoppingListSummaryItemDto> Items);
+public sealed record ShoppingListDetailsDto(Guid Id, string Name, IReadOnlyList<ShoppingListSummaryItemDto>? Items);
 
 public sealed record ShoppingListSummaryItemDto(Guid Id, string Name, decimal Quantity, string Unit, bool IsChecked);
 
