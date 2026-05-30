@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Globalization;
 using DietPlanner.Application.Plans.Commands;
+using DietPlanner.Application.Plans.Planning;
 using DietPlanner.Application.Plans.Queries;
 using DietPlanner.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
@@ -15,17 +16,23 @@ namespace DietPlanner.Api.Controllers;
 public sealed class PlansController : ControllerBase
 {
     private readonly GetCurrentPlanHandler _getCurrentPlanHandler;
+    private readonly GetPlanningStateHandler _getPlanningStateHandler;
+    private readonly GenerateFutureWeekHandler _generateFutureWeekHandler;
     private readonly ActivateDraftHandler _activateDraftHandler;
     private readonly ReplaceMealHandler _replaceMealHandler;
     private readonly CopyDayHandler _copyDayHandler;
 
     public PlansController(
         GetCurrentPlanHandler getCurrentPlanHandler,
+        GetPlanningStateHandler getPlanningStateHandler,
+        GenerateFutureWeekHandler generateFutureWeekHandler,
         ActivateDraftHandler activateDraftHandler,
         ReplaceMealHandler replaceMealHandler,
         CopyDayHandler copyDayHandler)
     {
         _getCurrentPlanHandler = getCurrentPlanHandler;
+        _getPlanningStateHandler = getPlanningStateHandler;
+        _generateFutureWeekHandler = generateFutureWeekHandler;
         _activateDraftHandler = activateDraftHandler;
         _replaceMealHandler = replaceMealHandler;
         _copyDayHandler = copyDayHandler;
@@ -42,6 +49,34 @@ public sealed class PlansController : ControllerBase
 
         var plan = await _getCurrentPlanHandler.HandleAsync(new GetCurrentPlanQuery(userId.Value), cancellationToken);
         return plan is null ? NotFound() : Ok(CurrentPlanResponse.From(plan));
+    }
+
+    [HttpGet("state")]
+    public async Task<ActionResult<PlanningStateResponse>> GetState(CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var state = await _getPlanningStateHandler.HandleAsync(new GetPlanningStateQuery(userId.Value, today), cancellationToken);
+        return state is null ? NotFound() : Ok(PlanningStateResponse.From(state));
+    }
+
+    [HttpPost("future/generate")]
+    public async Task<ActionResult<PlanningStateResponse>> GenerateFutureWeek(CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var state = await _generateFutureWeekHandler.HandleAsync(new GenerateFutureWeekCommand(userId.Value, today), cancellationToken);
+        return state is null ? Conflict() : Ok(PlanningStateResponse.From(state));
     }
 
     [HttpPost("current/activate")]
@@ -167,6 +202,18 @@ public sealed record CurrentPlanResponse(Guid Id, string Status, string StartDat
             plan.StartDate.ToString("yyyy-MM-dd"),
             plan.DinnerMode,
             plan.Days.Select(CurrentPlanDayResponse.From).ToArray());
+    }
+}
+
+public sealed record PlanningStateResponse(CurrentPlanResponse CurrentPlan, CurrentPlanResponse? FuturePlan, bool CanGenerateFutureWeek)
+{
+    public static PlanningStateResponse From(PlanningStateDto state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        return new PlanningStateResponse(
+            CurrentPlanResponse.From(state.CurrentPlan),
+            state.FuturePlan is null ? null : CurrentPlanResponse.From(state.FuturePlan),
+            state.CanGenerateFutureWeek);
     }
 }
 

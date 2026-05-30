@@ -42,6 +42,8 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<GoogleLoginHandler>();
         services.AddScoped<GetCurrentPlanHandler>();
+        services.AddScoped<GetPlanningStateHandler>();
+        services.AddScoped<GenerateFutureWeekHandler>();
         services.AddScoped<PlanningStateService>();
         services.AddScoped<ActivateDraftHandler>();
         services.AddScoped<DeleteShoppingListsForPlanHandler>();
