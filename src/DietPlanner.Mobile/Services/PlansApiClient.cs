@@ -15,7 +15,11 @@ public interface IPlansApiClient
 
     Task ReplaceMealAsync(DateOnly date, string slotType, Guid mealId, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default);
 
+    Task ReplaceMealAsync(Guid planId, DateOnly date, string slotType, Guid mealId, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default);
+
     Task CopyDayAsync(DateOnly sourceDate, DateOnly targetDate, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default);
+
+    Task CopyDayAsync(Guid planId, DateOnly sourceDate, DateOnly targetDate, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default);
 }
 
 public sealed class PlansApiClient : IPlansApiClient
@@ -87,9 +91,39 @@ public sealed class PlansApiClient : IPlansApiClient
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task ReplaceMealAsync(Guid planId, DateOnly date, string slotType, Guid mealId, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(
+            HttpMethod.Put,
+            $"api/plans/{planId}/days/{date:yyyy-MM-dd}/slots/{slotType}");
+        request.Content = JsonContent.Create(new ReplaceMealRequest(mealId, deleteLinkedShoppingLists));
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            throw new LinkedShoppingListsExistException();
+        }
+
+        response.EnsureSuccessStatusCode();
+    }
+
     public async Task CopyDayAsync(DateOnly sourceDate, DateOnly targetDate, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
     {
         using var request = CreateRequest(HttpMethod.Post, "api/plans/current/copy-day");
+        request.Content = JsonContent.Create(new CopyDayRequest(sourceDate.ToString("yyyy-MM-dd"), targetDate.ToString("yyyy-MM-dd"), deleteLinkedShoppingLists));
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            throw new LinkedShoppingListsExistException();
+        }
+
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task CopyDayAsync(Guid planId, DateOnly sourceDate, DateOnly targetDate, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
+    {
+        using var request = CreateRequest(HttpMethod.Post, $"api/plans/{planId}/copy-day");
         request.Content = JsonContent.Create(new CopyDayRequest(sourceDate.ToString("yyyy-MM-dd"), targetDate.ToString("yyyy-MM-dd"), deleteLinkedShoppingLists));
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);

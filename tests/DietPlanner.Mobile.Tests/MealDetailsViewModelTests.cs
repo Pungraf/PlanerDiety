@@ -127,6 +127,9 @@ public sealed class MealDetailsViewModelTests
         public Task CopyDayAsync(DateOnly sourceDate, DateOnly targetDate, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
+        public Task CopyDayAsync(Guid planId, DateOnly sourceDate, DateOnly targetDate, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
         public Task<CurrentPlanDto> GetCurrentPlanAsync(CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
@@ -140,6 +143,9 @@ public sealed class MealDetailsViewModelTests
             => Task.FromResult(_details);
 
         public Task ReplaceMealAsync(DateOnly date, string slotType, Guid mealId, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task ReplaceMealAsync(Guid planId, DateOnly date, string slotType, Guid mealId, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
     }
 
@@ -155,6 +161,9 @@ public sealed class MealDetailsViewModelTests
         public Task CopyDayAsync(DateOnly sourceDate, DateOnly targetDate, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
+        public Task CopyDayAsync(Guid planId, DateOnly sourceDate, DateOnly targetDate, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
         public Task<CurrentPlanDto> GetCurrentPlanAsync(CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
@@ -168,6 +177,9 @@ public sealed class MealDetailsViewModelTests
             => Task.FromException<MealDetailsDto>(_exception);
 
         public Task ReplaceMealAsync(DateOnly date, string slotType, Guid mealId, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task ReplaceMealAsync(Guid planId, DateOnly date, string slotType, Guid mealId, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
     }
 }

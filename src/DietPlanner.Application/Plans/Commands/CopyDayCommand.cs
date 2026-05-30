@@ -3,7 +3,7 @@ using DietPlanner.Application.Shopping.Commands;
 
 namespace DietPlanner.Application.Plans.Commands;
 
-public sealed record CopyDayCommand(Guid UserId, DateOnly SourceDate, DateOnly TargetDate, bool DeleteLinkedShoppingLists);
+public sealed record CopyDayCommand(Guid UserId, Guid? PlanId, DateOnly SourceDate, DateOnly TargetDate, bool DeleteLinkedShoppingLists);
 
 public sealed class CopyDayHandler
 {
@@ -18,7 +18,9 @@ public sealed class CopyDayHandler
 
     public async Task<CopyDayResult?> HandleAsync(CopyDayCommand command, CancellationToken cancellationToken)
     {
-        var plan = await _dbContext.FindReadableWeeklyPlanAsync(command.UserId, cancellationToken);
+        var plan = command.PlanId.HasValue
+            ? await _dbContext.FindWeeklyPlanByIdAsync(command.UserId, command.PlanId.Value, cancellationToken)
+            : await _dbContext.FindReadableWeeklyPlanAsync(command.UserId, cancellationToken);
         if (plan is null)
         {
             return null;

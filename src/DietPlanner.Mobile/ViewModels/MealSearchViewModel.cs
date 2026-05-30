@@ -104,7 +104,15 @@ public sealed class MealSearchViewModel : INotifyPropertyChanged
 
         try
         {
-            await _plansApiClient.ReplaceMealAsync(context.Date, context.SlotType, meal.Id, deleteLinkedShoppingLists: false);
+            if (context.PlanId.HasValue)
+            {
+                await _plansApiClient.ReplaceMealAsync(context.PlanId.Value, context.Date, context.SlotType, meal.Id, deleteLinkedShoppingLists: false);
+            }
+            else
+            {
+                await _plansApiClient.ReplaceMealAsync(context.Date, context.SlotType, meal.Id, deleteLinkedShoppingLists: false);
+            }
+
             await _navigator.GoToAsync("//home");
             _mealSearchContextStore.Current = null;
         }
@@ -121,7 +129,15 @@ public sealed class MealSearchViewModel : INotifyPropertyChanged
                 return;
             }
 
-            await _plansApiClient.ReplaceMealAsync(context.Date, context.SlotType, meal.Id, deleteLinkedShoppingLists: true);
+            if (context.PlanId.HasValue)
+            {
+                await _plansApiClient.ReplaceMealAsync(context.PlanId.Value, context.Date, context.SlotType, meal.Id, deleteLinkedShoppingLists: true);
+            }
+            else
+            {
+                await _plansApiClient.ReplaceMealAsync(context.Date, context.SlotType, meal.Id, deleteLinkedShoppingLists: true);
+            }
+
             await _navigator.GoToAsync("//home");
             _mealSearchContextStore.Current = null;
         }

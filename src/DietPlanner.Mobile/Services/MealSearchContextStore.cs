@@ -1,6 +1,6 @@
 namespace DietPlanner.Mobile.Services;
 
-public sealed record MealSearchContext(DateOnly Date, string SlotType, string CurrentMealName);
+public sealed record MealSearchContext(Guid? PlanId, DateOnly Date, string SlotType, string CurrentMealName);
 
 public interface IMealSearchContextStore
 {

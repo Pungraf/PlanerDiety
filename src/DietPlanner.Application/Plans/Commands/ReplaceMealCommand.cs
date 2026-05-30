@@ -6,7 +6,7 @@ using DietPlanner.Domain.Enums;
 
 namespace DietPlanner.Application.Plans.Commands;
 
-public sealed record ReplaceMealCommand(Guid UserId, DateOnly Date, MealSlotType SlotType, Guid MealId, bool DeleteLinkedShoppingLists);
+public sealed record ReplaceMealCommand(Guid UserId, Guid? PlanId, DateOnly Date, MealSlotType SlotType, Guid MealId, bool DeleteLinkedShoppingLists);
 
 public sealed class ReplaceMealHandler
 {
@@ -21,7 +21,9 @@ public sealed class ReplaceMealHandler
 
     public async Task<ReplaceMealResult?> HandleAsync(ReplaceMealCommand command, CancellationToken cancellationToken)
     {
-        var plan = await _dbContext.FindReadableWeeklyPlanAsync(command.UserId, cancellationToken);
+        var plan = command.PlanId.HasValue
+            ? await _dbContext.FindWeeklyPlanByIdAsync(command.UserId, command.PlanId.Value, cancellationToken)
+            : await _dbContext.FindReadableWeeklyPlanAsync(command.UserId, cancellationToken);
         if (plan is null)
         {
             return null;

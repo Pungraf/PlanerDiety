@@ -21,7 +21,7 @@ public sealed class MealSearchViewModelTests
             plansClient,
             new InMemoryMealSearchContextStore
             {
-                Current = new MealSearchContext(new DateOnly(2026, 5, 26), "breakfast", "Oats Bowl")
+                Current = new MealSearchContext(null, new DateOnly(2026, 5, 26), "breakfast", "Oats Bowl")
             },
             new RecordingNavigator(),
             new RejectingPromptService());
@@ -42,7 +42,7 @@ public sealed class MealSearchViewModelTests
         var navigator = new RecordingNavigator();
         var contextStore = new InMemoryMealSearchContextStore
         {
-            Current = new MealSearchContext(new DateOnly(2026, 5, 26), "breakfast", "Oats Bowl")
+            Current = new MealSearchContext(null, new DateOnly(2026, 5, 26), "breakfast", "Oats Bowl")
         };
         var viewModel = new MealSearchViewModel(plansClient, contextStore, navigator, new RejectingPromptService());
 
@@ -65,7 +65,7 @@ public sealed class MealSearchViewModelTests
         var navigator = new ThrowingNavigator(new InvalidOperationException("Navigation failed."));
         var contextStore = new InMemoryMealSearchContextStore
         {
-            Current = new MealSearchContext(new DateOnly(2026, 5, 26), "breakfast", "Oats Bowl")
+            Current = new MealSearchContext(null, new DateOnly(2026, 5, 26), "breakfast", "Oats Bowl")
         };
         var viewModel = new MealSearchViewModel(plansClient, contextStore, navigator, new RejectingPromptService());
 
@@ -85,7 +85,7 @@ public sealed class MealSearchViewModelTests
         var plansClient = new FakePlansApiClient(catalog: [selectedMeal], throwConflictOnce: true);
         var contextStore = new InMemoryMealSearchContextStore
         {
-            Current = new MealSearchContext(new DateOnly(2026, 5, 26), "breakfast", "Oats Bowl")
+            Current = new MealSearchContext(null, new DateOnly(2026, 5, 26), "breakfast", "Oats Bowl")
         };
         var viewModel = new MealSearchViewModel(plansClient, contextStore, new RecordingNavigator(), new AcceptingPromptService());
 
@@ -120,6 +120,11 @@ public sealed class MealSearchViewModelTests
         public List<bool> ReplaceCalls { get; } = [];
 
         public Task CopyDayAsync(DateOnly sourceDate, DateOnly targetDate, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task CopyDayAsync(Guid planId, DateOnly sourceDate, DateOnly targetDate, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }
@@ -161,6 +166,11 @@ public sealed class MealSearchViewModelTests
             LastReplaceMealId = mealId;
             return Task.CompletedTask;
         }
+
+        public Task ReplaceMealAsync(Guid planId, DateOnly date, string slotType, Guid mealId, bool deleteLinkedShoppingLists, CancellationToken cancellationToken = default)
+        {
+            return ReplaceMealAsync(date, slotType, mealId, deleteLinkedShoppingLists, cancellationToken);
+        }
     }
 
     private sealed class RecordingNavigator : IAppNavigator
@@ -170,6 +180,12 @@ public sealed class MealSearchViewModelTests
         public Task GoToAsync(string route)
         {
             LastRoute = route;
+            return Task.CompletedTask;
+        }
+
+        public Task GoToMainTabAsync(MainAppTab tab)
+        {
+            LastRoute = tab == MainAppTab.Home ? "//home" : "//main/shopping-list";
             return Task.CompletedTask;
         }
     }
@@ -184,6 +200,11 @@ public sealed class MealSearchViewModelTests
         }
 
         public Task GoToAsync(string route)
+        {
+            return Task.FromException(_exception);
+        }
+
+        public Task GoToMainTabAsync(MainAppTab tab)
         {
             return Task.FromException(_exception);
         }

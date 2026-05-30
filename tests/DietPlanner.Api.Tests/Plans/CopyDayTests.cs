@@ -75,4 +75,29 @@ public class CopyDayTests
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await app.ReadShoppingListsAsync()).Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task CopyDay_ShouldOnlyUpdateSpecifiedPlan()
+    {
+        await using var app = await PlansApiFactory.WithPlansAsync(userId =>
+        [
+            PlansApiFactory.CreateActivePlan(userId, new DateOnly(2026, 5, 25)),
+            PlansApiFactory.CreateDraftPlan(userId, new DateOnly(2026, 6, 1))
+        ]);
+        using var client = await app.CreateAuthenticatedClientAsync();
+
+        var plans = await app.ReadPlansAsync();
+        var futurePlanId = plans.Single(plan => plan.StartDate == new DateOnly(2026, 6, 1)).Id;
+
+        var response = await client.PostAsJsonAsync($"/api/plans/{futurePlanId}/copy-day", new
+        {
+            SourceDate = "2026-06-01",
+            TargetDate = "2026-06-02"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var updatedPlans = await app.ReadPlansAsync();
+        updatedPlans.Should().ContainSingle(plan => plan.Id == futurePlanId);
+    }
 }

@@ -83,6 +83,45 @@ public class ReplaceMealTests
     }
 
     [Fact]
+    public async Task ReplaceMeal_ShouldOnlyUpdateSpecifiedPlan()
+    {
+        await using var app = await PlansApiFactory.WithPlansAsync(userId =>
+        [
+            PlansApiFactory.CreateActivePlan(userId, new DateOnly(2026, 5, 25)),
+            PlansApiFactory.CreateDraftPlan(userId, new DateOnly(2026, 6, 1))
+        ]);
+        using var client = await app.CreateAuthenticatedClientAsync();
+
+        var plans = await app.ReadPlansAsync();
+        var futurePlanId = plans.Single(plan => plan.StartDate == new DateOnly(2026, 6, 1)).Id;
+
+        var response = await client.PutAsJsonAsync($"/api/plans/{futurePlanId}/days/2026-06-02/slots/breakfast", new
+        {
+            MealId = TestData.LunchMealId
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        await using var scope = app.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<DietPlanner.Infrastructure.Persistence.DietPlannerDbContext>();
+        var updatedPlans = await dbContext.WeeklyPlans
+            .Include(plan => plan.Days)
+            .ThenInclude(day => day.MealSlots)
+            .Where(plan => plan.UserId == app.User.Id)
+            .ToListAsync();
+
+        updatedPlans.Single(plan => plan.Id == futurePlanId)
+            .Days.Single(day => day.Date == new DateOnly(2026, 6, 2))
+            .MealSlots.Single(slot => slot.SlotType == MealSlotType.Breakfast)
+            .MealId.Should().Be(TestData.LunchMealId);
+
+        updatedPlans.Single(plan => plan.StartDate == new DateOnly(2026, 5, 25))
+            .Days.Single(day => day.Date == new DateOnly(2026, 5, 26))
+            .MealSlots.Single(slot => slot.SlotType == MealSlotType.Breakfast)
+            .MealId.Should().BeNull();
+    }
+
+    [Fact]
     public async Task ReplaceMeal_ShouldReturnConflict_WhenLinkedShoppingListsExistAndDeleteIsNotConfirmed()
     {
         await using var app = await PlansApiFactory.WithShoppingListAsync();

@@ -126,7 +126,7 @@ public sealed class PlansController : ControllerBase
         }
 
         var result = await _replaceMealHandler.HandleAsync(
-            new ReplaceMealCommand(userId.Value, parsedDate, parsedSlotType, request.MealId, request.DeleteLinkedShoppingLists),
+            new ReplaceMealCommand(userId.Value, null, parsedDate, parsedSlotType, request.MealId, request.DeleteLinkedShoppingLists),
             cancellationToken);
 
         if (result is null || !result.Succeeded)
@@ -156,7 +156,80 @@ public sealed class PlansController : ControllerBase
         }
 
         var result = await _copyDayHandler.HandleAsync(
-            new CopyDayCommand(userId.Value, sourceDate, targetDate, request.DeleteLinkedShoppingLists),
+            new CopyDayCommand(userId.Value, null, sourceDate, targetDate, request.DeleteLinkedShoppingLists),
+            cancellationToken);
+
+        if (result is null || !result.Succeeded)
+        {
+            return result?.FailureReason == PlanEditFailureReason.LinkedShoppingListsExist
+                ? Conflict(new { code = "linkedShoppingListsExist" })
+                : NotFound();
+        }
+
+        return Ok();
+    }
+
+    [HttpPut("{planId:guid}/days/{date}/slots/{slotType}")]
+    public async Task<ActionResult<ReplaceMealResponse>> ReplaceMealForPlan(
+        Guid planId,
+        string date,
+        string slotType,
+        [FromBody] ReplaceMealRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        if (!DateOnly.TryParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
+        {
+            return BadRequest();
+        }
+
+        if (!Enum.TryParse<MealSlotType>(slotType, true, out var parsedSlotType) || !Enum.IsDefined(parsedSlotType))
+        {
+            return BadRequest();
+        }
+
+        if (request is null || request.MealId == Guid.Empty)
+        {
+            return BadRequest();
+        }
+
+        var result = await _replaceMealHandler.HandleAsync(
+            new ReplaceMealCommand(userId.Value, planId, parsedDate, parsedSlotType, request.MealId, request.DeleteLinkedShoppingLists),
+            cancellationToken);
+
+        if (result is null || !result.Succeeded)
+        {
+            return result?.FailureReason == PlanEditFailureReason.LinkedShoppingListsExist
+                ? Conflict(new { code = "linkedShoppingListsExist" })
+                : NotFound();
+        }
+
+        return Ok(ReplaceMealResponse.From(result));
+    }
+
+    [HttpPost("{planId:guid}/copy-day")]
+    public async Task<IActionResult> CopyDayForPlan(Guid planId, [FromBody] CopyDayRequest request, CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        if (request is null
+            || !DateOnly.TryParseExact(request.SourceDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var sourceDate)
+            || !DateOnly.TryParseExact(request.TargetDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var targetDate))
+        {
+            return BadRequest();
+        }
+
+        var result = await _copyDayHandler.HandleAsync(
+            new CopyDayCommand(userId.Value, planId, sourceDate, targetDate, request.DeleteLinkedShoppingLists),
             cancellationToken);
 
         if (result is null || !result.Succeeded)

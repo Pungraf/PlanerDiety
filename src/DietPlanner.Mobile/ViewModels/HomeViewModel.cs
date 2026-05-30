@@ -13,26 +13,35 @@ public sealed class HomeViewModel : INotifyPropertyChanged
     private const string ApiDateFormat = "yyyy-MM-dd";
     private readonly IPlansApiClient _plansApiClient;
     private readonly IAppNavigator _navigator;
+    private readonly IUserPromptService _promptService;
     private readonly IMealSearchContextStore _mealSearchContextStore;
     private readonly IMealDetailsContextStore _mealDetailsContextStore;
     private HomeDayViewModel? _selectedDay;
+    private HomeDayViewModel? _copyTargetDay;
     private string? _errorMessage;
     private bool _isLoading;
+    private bool _isCopyDayPickerOpen;
 
     public HomeViewModel(
         IPlansApiClient plansApiClient,
         IAppNavigator navigator,
+        IUserPromptService promptService,
         IMealSearchContextStore mealSearchContextStore,
         IMealDetailsContextStore mealDetailsContextStore)
     {
         _plansApiClient = plansApiClient;
         _navigator = navigator;
+        _promptService = promptService;
         _mealSearchContextStore = mealSearchContextStore;
         _mealDetailsContextStore = mealDetailsContextStore;
         LoadCommand = new AsyncCommand(_ => LoadAsync());
-        CopyDayCommand = new AsyncCommand(target => CopyDayAsync(target as HomeDayViewModel), () => SelectedDay is not null);
+        OpenCopyDayCommand = new AsyncCommand(_ => OpenCopyDayAsync(), () => SelectedDay is not null);
+        ConfirmCopyDayCommand = new AsyncCommand(_ => ConfirmCopyDayAsync(), () => SelectedDay is not null && CopyTargetDay is not null);
+        CancelCopyDayCommand = new AsyncCommand(_ => CancelCopyDayAsync());
         OpenMealSearchCommand = new AsyncCommand(slot => OpenMealSearchAsync(slot as HomeMealSlotViewModel), () => SelectedDay is not null);
         OpenMealDetailsCommand = new AsyncCommand(slot => OpenMealDetailsAsync(slot as HomeMealSlotViewModel), () => SelectedDay is not null);
+        GoToHomeCommand = new AsyncCommand(_ => _navigator.GoToMainTabAsync(MainAppTab.Home));
+        GoToShoppingListsCommand = new AsyncCommand(_ => _navigator.GoToMainTabAsync(MainAppTab.ShoppingList));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -41,11 +50,19 @@ public sealed class HomeViewModel : INotifyPropertyChanged
 
     public AsyncCommand LoadCommand { get; }
 
-    public AsyncCommand CopyDayCommand { get; }
+    public AsyncCommand OpenCopyDayCommand { get; }
+
+    public AsyncCommand ConfirmCopyDayCommand { get; }
+
+    public AsyncCommand CancelCopyDayCommand { get; }
 
     public AsyncCommand OpenMealSearchCommand { get; }
 
     public AsyncCommand OpenMealDetailsCommand { get; }
+
+    public AsyncCommand GoToHomeCommand { get; }
+
+    public AsyncCommand GoToShoppingListsCommand { get; }
 
     public HomeDayViewModel? SelectedDay
     {
@@ -60,9 +77,32 @@ public sealed class HomeViewModel : INotifyPropertyChanged
             _selectedDay = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasSelectedDay));
-            CopyDayCommand.RaiseCanExecuteChanged();
+            OnPropertyChanged(nameof(AvailableCopyTargetDays));
+            if (_copyTargetDay?.Date == _selectedDay?.Date)
+            {
+                CopyTargetDay = AvailableCopyTargetDays.FirstOrDefault();
+            }
+
+            OpenCopyDayCommand.RaiseCanExecuteChanged();
+            ConfirmCopyDayCommand.RaiseCanExecuteChanged();
             OpenMealSearchCommand.RaiseCanExecuteChanged();
             OpenMealDetailsCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    public HomeDayViewModel? CopyTargetDay
+    {
+        get => _copyTargetDay;
+        set
+        {
+            if (_copyTargetDay == value)
+            {
+                return;
+            }
+
+            _copyTargetDay = value;
+            OnPropertyChanged();
+            ConfirmCopyDayCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -82,6 +122,24 @@ public sealed class HomeViewModel : INotifyPropertyChanged
     }
 
     public bool HasSelectedDay => SelectedDay is not null;
+
+    public bool IsCopyDayPickerOpen
+    {
+        get => _isCopyDayPickerOpen;
+        private set
+        {
+            if (_isCopyDayPickerOpen == value)
+            {
+                return;
+            }
+
+            _isCopyDayPickerOpen = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public IReadOnlyList<HomeDayViewModel> AvailableCopyTargetDays
+        => Days.Where(day => day.Date != SelectedDay?.Date).ToArray();
 
     public string? ErrorMessage
     {
@@ -139,18 +197,60 @@ public sealed class HomeViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task CopyDayAsync(HomeDayViewModel? targetDay)
+    private Task OpenCopyDayAsync()
     {
-        if (SelectedDay is null || targetDay is null || targetDay.Date == SelectedDay.Date)
+        if (SelectedDay is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        ErrorMessage = null;
+        CopyTargetDay = AvailableCopyTargetDays.FirstOrDefault();
+        IsCopyDayPickerOpen = true;
+        return Task.CompletedTask;
+    }
+
+    private Task CancelCopyDayAsync()
+    {
+        IsCopyDayPickerOpen = false;
+        CopyTargetDay = null;
+        return Task.CompletedTask;
+    }
+
+    private async Task ConfirmCopyDayAsync()
+    {
+        if (SelectedDay is null || CopyTargetDay is null || CopyTargetDay.Date == SelectedDay.Date)
         {
             return;
         }
+
+        var targetDay = CopyTargetDay;
 
         ErrorMessage = null;
 
         try
         {
             await _plansApiClient.CopyDayAsync(SelectedDay.Date, targetDay.Date, deleteLinkedShoppingLists: false);
+            IsCopyDayPickerOpen = false;
+            CopyTargetDay = null;
+            await LoadAsync(targetDay.Date, CancellationToken.None);
+        }
+        catch (LinkedShoppingListsExistException)
+        {
+            var confirmed = await _promptService.ConfirmAsync(
+                "Delete shopping lists?",
+                "This week has linked shopping lists. Changing the plan will delete them.",
+                "Continue",
+                "Cancel");
+
+            if (!confirmed)
+            {
+                return;
+            }
+
+            await _plansApiClient.CopyDayAsync(SelectedDay.Date, targetDay.Date, deleteLinkedShoppingLists: true);
+            IsCopyDayPickerOpen = false;
+            CopyTargetDay = null;
             await LoadAsync(targetDay.Date, CancellationToken.None);
         }
         catch (Exception exception)
@@ -166,7 +266,7 @@ public sealed class HomeViewModel : INotifyPropertyChanged
             return;
         }
 
-        _mealSearchContextStore.Current = new MealSearchContext(SelectedDay.Date, slot.SlotType, slot.Name);
+        _mealSearchContextStore.Current = new MealSearchContext(null, SelectedDay.Date, slot.SlotType, slot.Name);
         await _navigator.GoToAsync("meal-search");
     }
 
